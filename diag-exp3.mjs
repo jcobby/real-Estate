@@ -1,0 +1,11 @@
+import { chromium } from "@playwright/test";
+const b = await chromium.launch(); const p = await b.newPage();
+const session = { user:{id:"x1",name:"T",email:"t@e.com",phone:"+233200000000",role:"buyer",avatarUrl:"https://i.pravatar.cc/150",region:"Greater Accra",verified:false,joinedAt:new Date().toISOString()}, token:"dead.token.here", createdAt:new Date().toISOString() };
+await p.addInitScript((s)=>localStorage.setItem("realestate:session", JSON.stringify({state:{session:s},version:0})), session);
+await p.goto("http://localhost:3000/dashboard", { waitUntil:"domcontentloaded", timeout:60000 }).catch(()=>{});
+await p.waitForTimeout(8000);
+console.log("final URL:", p.url());
+console.log("redirected to /login:", p.url().includes("/login"));
+const cleared = await p.evaluate(()=>localStorage.getItem("realestate:session"));
+console.log("session cleared from storage:", cleared===null);
+await b.close();

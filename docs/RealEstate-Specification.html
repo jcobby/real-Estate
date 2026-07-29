@@ -1,0 +1,3746 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  :root { --ink:#1a2233; --muted:#5b6472; --line:#e2e6ee; --brand:#166a3f; --accent:#b9892f; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 10.5px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         color: var(--ink); margin: 0; }
+  .page { padding: 0; }
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; font-weight: 700; }
+  h1 { font-size: 22px; border-bottom: 3px solid var(--brand); padding-bottom: 6px; margin: 26px 0 14px;
+       page-break-before: always; }
+  h1:first-of-type { page-break-before: avoid; }
+  h2 { font-size: 15px; color: var(--brand); margin: 22px 0 8px; border-bottom: 1px solid var(--line);
+       padding-bottom: 3px; page-break-after: avoid; }
+  h3 { font-size: 12.5px; margin: 16px 0 6px; page-break-after: avoid; }
+  h4 { font-size: 11px; margin: 12px 0 4px; }
+  p { margin: 6px 0; }
+  a { color: var(--brand); text-decoration: none; }
+  ul, ol { margin: 6px 0 6px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+  strong { color: #0f1626; }
+  code { font-family: "SF Mono", "Consolas", monospace; font-size: 9.2px; background: #f4f6fa;
+         padding: 1px 4px; border-radius: 3px; color: #b0355f; }
+  pre { background: #0f1626; color: #e7ecf5; padding: 12px 14px; border-radius: 6px; overflow-x: auto;
+        font-family: "SF Mono", "Consolas", monospace; font-size: 8.6px; line-height: 1.45;
+        page-break-inside: avoid; }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9px;
+          page-break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef4f0; color: #0f1626; font-weight: 700; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  blockquote { margin: 10px 0; padding: 8px 14px; background: #fbf6ea; border-left: 4px solid var(--accent);
+               color: #4a3c1c; border-radius: 0 4px 4px 0; }
+  blockquote p { margin: 3px 0; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+  em { color: var(--muted); }
+</style></head>
+  <body><div class="page">
+  <div style="page-break-after: always; padding: 120px 10px 0; text-align: center;">
+    <div style="font-size: 13px; letter-spacing: 3px; color: #b9892f; font-weight: 700;">SOFTWARE SPECIFICATION</div>
+    <div style="font-size: 44px; font-weight: 800; color: #166a3f; margin: 14px 0 4px;">RealEstate</div>
+    <div style="font-size: 15px; color: #5b6472;">Ghana land &amp; property marketplace — Frontend &amp; Backend</div>
+    <div style="margin: 40px auto 0; width: 70%; border-top: 1px solid #e2e6ee; padding-top: 18px;
+                font-size: 11px; color: #5b6472; text-align: left;">
+      <p><strong>Purpose:</strong> hand-off document for the backend team. Specifies the existing Next.js
+      frontend and the production backend required to support it, integrating through a versioned API contract.</p>
+      <p><strong>Version:</strong> 1.0 &nbsp;·&nbsp; <strong>Status:</strong> For implementation</p>
+      <p><strong>Repositories:</strong> Frontend (exists) &amp; Backend (to build) — independently deployable.</p>
+    </div>
+  </div><h1>RealEstate — Software Specification (Frontend + Backend)</h1>
+<p><strong>Version:</strong> 1.0 · <strong>Status:</strong> For implementation · <strong>Audience:</strong> Backend team, frontend team, DevOps, QA
+<strong>Owner (product):</strong> RealEstate · <strong>Prepared for:</strong> Backend engineering handover</p>
+<blockquote>
+<p>This document specifies the <strong>existing</strong> RealEstate frontend and the <strong>backend that must be built</strong> to
+support it. The frontend is complete and runs today against a browser-based mock service layer; every
+data access already goes through a typed seam (<code>src/lib/api/*</code> returning <code>src/types</code> shapes). The backend&#39;s
+job is to satisfy that same contract with a real, production system. Frontend and backend are developed
+in <strong>separate repositories</strong> and integrate <strong>only through the API contract</strong> defined here (Section 12).</p>
+</blockquote>
+<hr>
+<h2>Table of contents</h2>
+<ol>
+<li>Executive summary</li>
+<li>Goals and non-goals</li>
+<li>Assumptions, constraints, and open questions</li>
+<li>User roles and permissions</li>
+<li>User journeys and use cases</li>
+<li>Functional requirements</li>
+<li>Non-functional requirements</li>
+<li>High-level system architecture</li>
+<li>Repository and ownership model</li>
+<li>Frontend technical specification</li>
+<li>Backend technical specification</li>
+<li>API contract</li>
+<li>Standard API response formats</li>
+<li>Real-time communication</li>
+<li>Third-party integrations</li>
+<li>Validation rules</li>
+<li>Error and failure handling</li>
+<li>API mocking and parallel development</li>
+<li>API change-management process</li>
+<li>Environment and configuration</li>
+<li>Deployment architecture</li>
+<li>CI/CD specification</li>
+<li>Observability and operations</li>
+<li>Performance and scalability</li>
+<li>Accessibility and responsive design</li>
+<li>Testing and QA strategy</li>
+<li>Team responsibility matrix</li>
+<li>Integration workflow</li>
+<li>Implementation phases</li>
+<li>Product backlog</li>
+<li>Definition of ready</li>
+<li>Definition of done</li>
+<li>Risks and mitigations</li>
+<li>Final implementation checklist</li>
+<li>Final architecture decisions</li>
+</ol>
+<hr>
+<h2>1. Executive summary</h2>
+<p><strong>What it is.</strong> RealEstate is a <strong>trust-first land &amp; property marketplace for Ghana</strong>. Buyers browse land
+<strong>directly on a live satellite map</strong>, tap the exact plots they want, and buy through a <strong>mobile-money / card
+→ escrow</strong> flow. Sellers list land through a guided wizard and earn a <strong>Verified</strong> badge via a document
+verification pipeline. The platform also includes a <strong>building-materials &amp; tools shop</strong> (so a buyer can buy
+land and then build on it), a <strong>land-conflict / boundary-overlap checker</strong> (does my boundary clash with a
+registered plot?), a <strong>service-provider directory</strong> (surveyors, developers, etc.), buyer↔seller <strong>messaging</strong>,
+<strong>notifications</strong>, and an <strong>admin</strong> back office (verification queue, moderation, analytics, reports).</p>
+<p><strong>Who it is for.</strong> Land buyers (diaspora and local), land sellers (individual owners, agents, developers),
+material suppliers, service providers, and platform administrators.</p>
+<p><strong>Business problem.</strong> Land fraud, double-selling, and undocumented boundaries are endemic in the Ghanaian land
+market. RealEstate reduces risk by combining (a) <strong>map-precise plot selection</strong> with authoritative geometry,
+(b) <strong>document verification</strong> with a visible trust badge, (c) <strong>escrow-based settlement</strong> so money is only
+released as documents/title transfer, and (d) a <strong>boundary-conflict check</strong> that flags overlaps before money
+changes hands.</p>
+<p><strong>Main capabilities.</strong> Auth &amp; roles · listings + search + map plot picker · estate/parcel GeoJSON · escrow
+purchases + simulated-then-real payments · KYC/verification · messaging + notifications (real-time) · materials
+catalog + cart + orders + supplier self-service · providers + reviews + leads · land-conflict checker + emailed
+report · admin analytics/moderation/reports.</p>
+<p><strong>High-level architecture.</strong> A <strong>Next.js 16</strong> frontend (App Router, TypeScript) talks over HTTPS to a
+<strong>stateless REST API</strong> backed by <strong>PostgreSQL + PostGIS</strong> (relational + geospatial), <strong>Redis</strong> (cache, queues,
+rate-limits, presence), <strong>object storage</strong> (images, documents, GeoJSON), a <strong>background-worker</strong> tier
+(BullMQ) for email/escrow/notifications, a <strong>realtime gateway</strong> (WebSocket) for chat and live notifications,
+and third-party integrations for <strong>payments</strong> (mobile money + card), <strong>email</strong> (transactional), and optional
+<strong>SMS</strong>.</p>
+<p><strong>Why frontend and backend are separated.</strong> The two are built by different teams on different release cadences,
+in different languages/toolchains, and deployed to different platforms (frontend to an edge/CDN host, backend
+to a containerized runtime near the database). Decoupling via a <strong>versioned API contract</strong> lets both teams work
+in parallel, test independently, and deploy independently without reading each other&#39;s source.</p>
+<hr>
+<h2>2. Goals and non-goals</h2>
+<h3>Business goals</h3>
+<ul>
+<li>Reduce buyer risk (fraud, double-sale, boundary disputes) enough to earn trust and transaction volume.</li>
+<li>Monetize via transaction fees (escrow), verification, featured listings, materials margin, and paid
+land-conflict checks for guests.</li>
+</ul>
+<h3>Product goals</h3>
+<ul>
+<li>A buyer can go from &quot;browse map&quot; → &quot;own plot with documents&quot; without leaving the platform.</li>
+<li>A seller can list, get verified, and manage leads/sales self-service.</li>
+<li>A guest or seller can check a boundary for conflicts and receive a professional report.</li>
+</ul>
+<h3>Technical goals</h3>
+<ul>
+<li>Backend fully satisfies the existing frontend contract (<code>src/types</code> + <code>src/lib/api/*</code>) so the mock layer is
+swapped for real HTTP with <strong>no UI rewrite</strong>.</li>
+<li>Correct, auditable <strong>money</strong> (escrow ledger) and <strong>land geometry</strong> (PostGIS) — the two trust-critical domains.</li>
+<li>Independent build/test/deploy for each repo; contract-tested integration.</li>
+</ul>
+<h3>Success criteria</h3>
+<ul>
+<li>Frontend, pointed at the real API base URL, passes its existing e2e flows (buy flow, seller estate-publish).</li>
+<li>Escrow ledger reconciles to zero; no orphaned held funds.</li>
+<li>Conflict check on server (PostGIS) returns the same overlaps as the client reference within tolerance.</li>
+<li>p95 read-API latency ≤ 400 ms; realtime message delivery p95 ≤ 2 s.</li>
+</ul>
+<h3>In first release (MVP)</h3>
+<p>Accounts/roles · listings + search + map + parcels · escrow purchase with <strong>one</strong> live payment provider (plus
+sandbox) · verification/KYC · messaging + notifications · materials shop + orders + supplier CRUD · land-conflict
+check + email report · admin queue/moderation/analytics.</p>
+<h3>Explicitly excluded from first release</h3>
+<p>Native mobile apps · multi-language UI beyond English (scaffolding exists) · in-platform mortgage/financing ·
+automated registry sync (manual/ops-assisted at launch — see open question OQ-3) · seller payouts automation
+beyond a manual/queued payout (see OQ-2) · AI valuation.</p>
+<h3>Possible future capabilities</h3>
+<p>Registry/Lands-Commission integration · mortgage partners · SMS-first flows · offline map tiles · title-NFT /
+blockchain audit trail · multi-currency (diaspora) · agent CRM.</p>
+<hr>
+<h2>3. Assumptions, constraints, and open questions</h2>
+<h3>Confirmed requirements (from the built frontend)</h3>
+<ul>
+<li>Roles: <code>buyer</code>, <code>seller</code>, <code>provider</code>, <code>admin</code> (a seller may also supply materials).</li>
+<li>Prices in <strong>Ghana Cedis (₵, GHS)</strong>, integer-major-unit today; see NFR money rule.</li>
+<li>Payment methods surfaced: <code>mtn-momo</code>, <code>vodafone-cash</code> (Telecel Cash), <code>card</code>.</li>
+<li>Escrow steps: <code>funds-held → documents-transfer → title-handover → released</code>.</li>
+<li>Parcels are <strong>GeoJSON polygons</strong> with <code>ParcelProperties</code> (plotNumber, owner, status, area, price…).</li>
+<li>Data shapes are frozen by <code>src/types/index.ts</code> (Section 11.3 mirrors them).</li>
+</ul>
+<h3>Assumptions made by the architect (labelled; confirm before build where starred)</h3>
+<ul>
+<li><strong>A1</strong> Backend is a <strong>separate service</strong> (not Next.js route handlers) exposing REST/JSON. <em>(★ OQ-1)</em></li>
+<li><strong>A2</strong> Stack: <strong>NestJS + TypeScript</strong>, <strong>PostgreSQL 16 + PostGIS</strong>, <strong>Prisma</strong>, <strong>Redis + BullMQ</strong>,
+<strong>S3-compatible</strong> storage, <strong>native WebSocket gateway</strong>, <strong>Resend</strong> for email. <em>(★ OQ-1)</em></li>
+<li><strong>A3</strong> Auth is <strong>email+password</strong> with short-lived <strong>JWT access + rotating refresh</strong>; phone-OTP is a
+fast-follow. <em>(★ OQ-4)</em></li>
+<li><strong>A4</strong> Escrow at launch is a <strong>platform-operated ledger with manual release approval</strong>, not a regulated
+third-party escrow. <em>(★ OQ-2 — legal/financial, must confirm.)</em></li>
+<li><strong>A5</strong> The platform DB is the <strong>source of truth</strong> for &quot;registered parcels&quot;; conflict checks carry a legal
+disclaimer and are <strong>advisory</strong>, not an official title search. <em>(★ OQ-3.)</em></li>
+<li><strong>A6</strong> Money stored in <strong>minor units (pesewas) as integers</strong>; the current frontend treats price as whole
+cedis — backend returns integer major units to preserve the contract and adds a <code>priceMinor</code> only if agreed.</li>
+<li><strong>A7</strong> Guests may run <strong>paid</strong> conflict checks; a guest is identified by a server-issued check token.</li>
+</ul>
+<h3>Technical constraints</h3>
+<ul>
+<li>Frontend is <strong>Next.js 16 / React 19 / TS strict</strong>; it consumes JSON and expects the field names in Section 11.3.</li>
+<li>Geospatial correctness requires PostGIS (or equivalent). Client uses lng/lat rings (GeoJSON order).</li>
+<li>CSP on the frontend host forbids arbitrary third-party script; any browser-side SDK (e.g., a payment widget
+public key) must be explicitly allowlisted.</li>
+</ul>
+<h3>Business constraints</h3>
+<ul>
+<li>Ghana <strong>Data Protection Act, 2012 (Act 843)</strong> applies to PII (names, phone, IDs, documents, plot ownership).</li>
+<li>Escrow and mobile-money settlement are regulated; the merchant-of-record and any trust-account partner must
+be confirmed before real money moves (OQ-2).</li>
+</ul>
+<h3>Information still requiring clarification (open questions)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Question</th>
+<th>Blocks</th>
+<th>Default assumption if unanswered</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OQ-1</td>
+<td>Backend stack &amp; repo model (separate service vs Next route handlers; NestJS ok?)</td>
+<td>Repo setup</td>
+<td>A1/A2</td>
+</tr>
+<tr>
+<td>OQ-2</td>
+<td>Real escrow (licensed partner/trust account) vs platform ledger? Merchant of record? Refund policy? Payout method to sellers?</td>
+<td>Payments/escrow build</td>
+<td>A4</td>
+</tr>
+<tr>
+<td>OQ-3</td>
+<td>Is platform DB the source of truth for parcels, or must we integrate the Lands Commission / a registry?</td>
+<td>Conflict checker legitimacy</td>
+<td>A5</td>
+</tr>
+<tr>
+<td>OQ-4</td>
+<td>Auth method(s): email+password only, Google OAuth, phone+OTP (SMS gateway)? MFA for admins?</td>
+<td>Auth build</td>
+<td>A3</td>
+</tr>
+<tr>
+<td>OQ-5</td>
+<td>Payment provider(s): Paystack, Flutterwave, MTN MoMo API, Telecel — which, and live at launch?</td>
+<td>Payments</td>
+<td>Paystack + sandbox</td>
+</tr>
+<tr>
+<td>OQ-6</td>
+<td>Transactional email provider + sending domain you own (SPF/DKIM/DMARC)?</td>
+<td>Email</td>
+<td>Resend + noreply@ your domain</td>
+</tr>
+<tr>
+<td>OQ-7</td>
+<td>Object storage (S3 / GCS / Cloudflare R2)? Document encryption/virus-scan required?</td>
+<td>Storage</td>
+<td>S3 + AV scan on upload</td>
+</tr>
+<tr>
+<td>OQ-8</td>
+<td>Realtime transport: self-hosted WebSocket vs Pusher/Ably?</td>
+<td>Chat/notifications</td>
+<td>Self-hosted WS</td>
+</tr>
+<tr>
+<td>OQ-9</td>
+<td>Notification channels: in-app only, + email, + SMS (which gateway)?</td>
+<td>Notifications</td>
+<td>in-app + email</td>
+</tr>
+<tr>
+<td>OQ-10</td>
+<td>Hosting/region &amp; data residency (PII in Ghana/EU/…)?</td>
+<td>Deploy</td>
+<td>EU/af-region container host</td>
+</tr>
+<tr>
+<td>OQ-11</td>
+<td>Expected scale (users, listings, checks/day) at launch and 12 months?</td>
+<td>Sizing</td>
+<td>10k users, 5k listings, 200 checks/day</td>
+</tr>
+<tr>
+<td>OQ-12</td>
+<td>Keep exact <code>src/types</code> field names, or may backend introduce a versioned v2 shape?</td>
+<td>Contract</td>
+<td>Keep exact shapes</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Per the guideline, these open questions do <strong>not</strong> block the spec: the starred assumptions above are used as
+defaults and clearly labelled. Confirm OQ-2 and OQ-3 before any real money or legal claim ships.</p>
+</blockquote>
+<hr>
+<h2>4. User roles and permissions</h2>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Description</th>
+<th>Key allowed actions</th>
+<th>Restricted from</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Guest</strong> (unauthenticated)</td>
+<td>Anonymous visitor</td>
+<td>Browse listings/materials/providers; view map &amp; parcels; run <strong>paid</strong> land-conflict check; register/login</td>
+<td>Buying land; messaging; dashboards; unpaid checks</td>
+</tr>
+<tr>
+<td><strong>Buyer</strong></td>
+<td>Registered purchaser</td>
+<td>All guest reads; favorites &amp; saved searches; message sellers; start purchases &amp; escrow; buy materials; track orders; free-tier conflict checks (policy)</td>
+<td>Creating listings; verification actions; admin</td>
+</tr>
+<tr>
+<td><strong>Seller</strong></td>
+<td>Lists land; may also supply materials</td>
+<td>Buyer actions; create/edit/pause/delete <strong>own</strong> listings &amp; estates/parcels; submit verification; manage <strong>own</strong> leads; CRUD <strong>own</strong> materials; view <strong>own</strong> sales stats</td>
+<td>Editing others&#39; data; admin/moderation; approving own verification</td>
+</tr>
+<tr>
+<td><strong>Provider</strong></td>
+<td>Service provider (surveyor, developer, …)</td>
+<td>Buyer actions; manage <strong>own</strong> provider profile; receive quote requests; accrue reviews</td>
+<td>Listing/verifying land; admin</td>
+</tr>
+<tr>
+<td><strong>Admin</strong></td>
+<td>Platform operator</td>
+<td>Full read; run verification queue (approve/reject/request docs); moderate listings; manage users; resolve abuse reports; view platform analytics; <strong>approve escrow releases</strong></td>
+<td>— (highest privilege; actions audit-logged &amp; MFA-gated)</td>
+</tr>
+</tbody></table>
+<p><strong>Authentication requirements.</strong> Guests: none. All others: valid session (JWT access + refresh). Admin actions:
+MFA required (OQ-4). <strong>Authorization rules.</strong> Ownership-scoped for seller/provider resources (a subject may only
+mutate rows where <code>ownerId === subject.id</code>); role-gated for admin routes; resource-level checks enforced on the
+<strong>backend</strong> regardless of any frontend guard (the frontend guard <code>RequireRole</code> is UX only).</p>
+<h3>Permissions matrix (C=create, R=read, U=update, D=delete, A=action)</h3>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Guest</th>
+<th>Buyer</th>
+<th>Seller</th>
+<th>Provider</th>
+<th>Admin</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Listings</td>
+<td>R</td>
+<td>R</td>
+<td>C R U D (own)</td>
+<td>R</td>
+<td>R U D, moderate (A)</td>
+</tr>
+<tr>
+<td>Estates / parcels</td>
+<td>R</td>
+<td>R</td>
+<td>C R U (own)</td>
+<td>R</td>
+<td>R U</td>
+</tr>
+<tr>
+<td>Parcel status</td>
+<td>R</td>
+<td>R</td>
+<td>U (own)</td>
+<td>R</td>
+<td>U</td>
+</tr>
+<tr>
+<td>Purchases / escrow</td>
+<td>—</td>
+<td>C R (own), A:advance</td>
+<td>R (own, as seller)</td>
+<td>—</td>
+<td>R all, <strong>A:release</strong></td>
+</tr>
+<tr>
+<td>Payments</td>
+<td>—</td>
+<td>A:pay (own)</td>
+<td>—</td>
+<td>—</td>
+<td>R, A:refund</td>
+</tr>
+<tr>
+<td>Verification cases</td>
+<td>—</td>
+<td>—</td>
+<td>C R (own)</td>
+<td>—</td>
+<td>R all, A:approve/reject/request-docs</td>
+</tr>
+<tr>
+<td>Messages / conversations</td>
+<td>—</td>
+<td>C R (own)</td>
+<td>C R (own)</td>
+<td>C R (own)</td>
+<td>R (moderation)</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>—</td>
+<td>R U (own)</td>
+<td>R U (own)</td>
+<td>R U (own)</td>
+<td>R U (own), C (broadcast)</td>
+</tr>
+<tr>
+<td>Materials</td>
+<td>R</td>
+<td>R</td>
+<td>C R U D (own)</td>
+<td>R</td>
+<td>R U D</td>
+</tr>
+<tr>
+<td>Material orders</td>
+<td>—</td>
+<td>C R (own), A:advance*</td>
+<td>R (own sales)</td>
+<td>—</td>
+<td>R all</td>
+</tr>
+<tr>
+<td>Providers</td>
+<td>R</td>
+<td>R</td>
+<td>—</td>
+<td>C R U (own)</td>
+<td>R U D</td>
+</tr>
+<tr>
+<td>Reviews</td>
+<td>R</td>
+<td>C (own)</td>
+<td>C (own)</td>
+<td>C (own)</td>
+<td>R D (moderation)</td>
+</tr>
+<tr>
+<td>Leads</td>
+<td>—</td>
+<td>(creates implicitly)</td>
+<td>R U (own)</td>
+<td>R U (own)</td>
+<td>R</td>
+</tr>
+<tr>
+<td>Abuse reports</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>R U A:resolve</td>
+</tr>
+<tr>
+<td>Land-conflict check</td>
+<td>A:paid</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A, R history</td>
+</tr>
+<tr>
+<td>Admin analytics/users/reports</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>R U A</td>
+</tr>
+</tbody></table>
+<p>* Order status advancement is fulfilment-driven; in production, order status transitions are owned by the
+supplier/ops, not the buyer (the current buyer-advance affordance is a demo shortcut — see FR-MAT-4).</p>
+<hr>
+<h2>5. User journeys and use cases</h2>
+<p>Each journey lists <strong>Actor · Preconditions · Trigger · Main flow · Alternative · Failure · Result</strong>, and splits
+<strong>FE</strong>/<strong>BE</strong> responsibilities.</p>
+<h3>UJ-1 Buy land on the map (signature flow)</h3>
+<ul>
+<li><strong>Actor:</strong> Buyer. <strong>Preconditions:</strong> authenticated; estate parcels exist. <strong>Trigger:</strong> taps ≥1 available plot → <strong>Buy</strong>.</li>
+<li><strong>Main:</strong> select plots (FE running totals) → checkout (choose MoMo/card) → <strong>BE</strong> creates purchase, initiates
+payment, on success marks plots <code>sold</code>, opens <strong>escrow</strong> (<code>funds-held</code>) → buyer watches escrow tracker →
+admin/ops advance <code>documents-transfer → title-handover</code>, admin <strong>releases</strong> → purchase <code>completed</code> with
+downloadable documents.</li>
+<li><strong>Alternative:</strong> buyer selects sold/reserved plot → FE blocks; concurrent buyers race for same plot → <strong>BE</strong>
+atomic reserve wins, loser gets <code>409 PLOT_UNAVAILABLE</code>.</li>
+<li><strong>Failure:</strong> payment declined → purchase <code>failed</code>, plots released, funds not captured.</li>
+<li><strong>Result:</strong> Buyer owns plots; parcels <code>sold</code>; escrow ledger holds funds until release.</li>
+<li><strong>FE:</strong> selection store, checkout UI, escrow tracker, purchases list. <strong>BE:</strong> atomic reservation, payment
+init/verify (webhook), escrow ledger + state machine, document generation, notifications.</li>
+</ul>
+<h3>UJ-2 Sell land: publish estate + get verified</h3>
+<ul>
+<li><strong>Actor:</strong> Seller. <strong>Trigger:</strong> completes listing wizard (draw grid / upload GeoJSON-KML).</li>
+<li><strong>Main:</strong> <strong>BE</strong> creates listing + estate + parcels (validated polygons) → listing <code>active</code> (or <code>pending-review</code>)
+→ seller submits verification with documents → admin reviews → <strong>verified</strong> flips listing badge; seller notified.</li>
+<li><strong>Failure:</strong> invalid/overlapping upload → <code>422</code> with per-feature errors. <strong>Result:</strong> buyable estate on the map.</li>
+<li><strong>FE:</strong> wizard, map draw, uploads. <strong>BE:</strong> GeoJSON validation, geometry storage, verification state machine, doc storage.</li>
+</ul>
+<h3>UJ-3 Check a boundary for conflicts</h3>
+<ul>
+<li><strong>Actor:</strong> Guest (paid) or Seller (policy). <strong>Trigger:</strong> draws/uploads boundary → <strong>Run check</strong>.</li>
+<li><strong>Main:</strong> <strong>BE</strong> runs PostGIS overlap against registered parcels → returns <code>ConflictResult</code> (searcher ring,
+conflicts with overlap geometry + area, total, clear flag) → FE overlays blue/amber/red → buyer requests
+<strong>email report</strong> → <strong>BE</strong> queues transactional email (PDF/HTML) + in-app notification.</li>
+<li><strong>Alternative (guest):</strong> must pay one-off fee first → <strong>BE</strong> issues a check token gating the run.</li>
+<li><strong>Failure:</strong> self-intersecting boundary → <code>422 INVALID_POLYGON</code>. <strong>Result:</strong> advisory conflict report (disclaimer).</li>
+<li><strong>FE:</strong> draw/upload, map overlays, email form. <strong>BE:</strong> payment gate, PostGIS intersect/area, email + notification.</li>
+</ul>
+<h3>UJ-4 Buy building materials</h3>
+<ul>
+<li><strong>Actor:</strong> Buyer. <strong>Main:</strong> browse catalog → cart → checkout (delivery address + MoMo/card) → <strong>BE</strong> creates
+order (<code>processing</code>) → fulfilment advances <code>confirmed → dispatched → delivered</code>; buyer tracks. <strong>BE</strong> owns
+stock/price snapshot at order time. <strong>Result:</strong> delivered order; supplier sales visible to the supplier.</li>
+</ul>
+<h3>UJ-5 Messaging &amp; notifications</h3>
+<ul>
+<li><strong>Actor:</strong> Buyer/Seller. <strong>Main:</strong> buyer opens a listing → <strong>Message seller</strong> → <strong>BE</strong> creates conversation +
+lead → realtime delivery to seller → unread counters → notifications. <strong>Failure:</strong> WS down → FE falls back to
+poll <code>GET /conversations</code>. <strong>Result:</strong> threaded chat; seller lead created.</li>
+</ul>
+<h3>UJ-6 Admin verification &amp; moderation</h3>
+<ul>
+<li><strong>Actor:</strong> Admin. <strong>Main:</strong> open queue → open case → approve/reject/request-docs (with note) → <strong>BE</strong> updates
+case + listing badge + timeline + notifies seller; moderate flagged listings; resolve abuse reports.</li>
+</ul>
+<hr>
+<h2>6. Functional requirements</h2>
+<p>Grouped by module. Each: <strong>role · input · processing · output · errors · owner (FE/BE) · acceptance</strong>. IDs are stable.</p>
+<h3>Auth &amp; accounts (FR-AUTH)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Input → Processing → Output</th>
+<th>Key errors</th>
+<th>Owner</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-AUTH-1</td>
+<td>Register</td>
+<td>Guest</td>
+<td>{name,email,phone,password,role∈{buyer,seller,provider}} → validate, hash (argon2id), create user, issue tokens → <code>{session}</code></td>
+<td>409 EMAIL_TAKEN, 422</td>
+<td>BE (FE form)</td>
+<td>New user can log in; password never stored plaintext</td>
+</tr>
+<tr>
+<td>FR-AUTH-2</td>
+<td>Login</td>
+<td>Guest</td>
+<td>{email,password} → verify → tokens → <code>{session}</code></td>
+<td>401 BAD_CREDENTIALS, 423 LOCKED</td>
+<td>BE</td>
+<td>Correct creds return session; 5 fails → lockout</td>
+</tr>
+<tr>
+<td>FR-AUTH-3</td>
+<td>Refresh</td>
+<td>any</td>
+<td>refresh cookie → rotate → new access</td>
+<td>401</td>
+<td>BE</td>
+<td>Rotating refresh; reuse detection revokes family</td>
+</tr>
+<tr>
+<td>FR-AUTH-4</td>
+<td>Logout</td>
+<td>any</td>
+<td>revoke refresh</td>
+<td>—</td>
+<td>BE</td>
+<td>Token unusable after</td>
+</tr>
+<tr>
+<td>FR-AUTH-5</td>
+<td>Current user</td>
+<td>any</td>
+<td>access → <code>{user}</code></td>
+<td>401</td>
+<td>BE</td>
+<td>Returns <code>User</code> shape</td>
+</tr>
+<tr>
+<td>FR-AUTH-6</td>
+<td>Password reset</td>
+<td>Guest</td>
+<td>request(email) → email token; confirm(token,newpw)</td>
+<td>400 EXPIRED</td>
+<td>BE</td>
+<td>Time-boxed single-use token</td>
+</tr>
+<tr>
+<td>FR-AUTH-7</td>
+<td>Update profile</td>
+<td>owner</td>
+<td>patch profile fields → <code>{user}</code></td>
+<td>422</td>
+<td>BE (FE settings)</td>
+<td>Persisted; avatar upload via storage</td>
+</tr>
+</tbody></table>
+<h3>Listings &amp; discovery (FR-LST)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-LST-1</td>
+<td>Search/list</td>
+<td>any</td>
+<td>Filters: q, region, landStatus, min/maxPrice, min/maxAcres, amenities[], verification, sellerType, sort∈{newest,price-asc,price-desc,size-desc,most-viewed}, page → <code>Paged&lt;Listing&gt;</code></td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-2</td>
+<td>Get one</td>
+<td>any</td>
+<td>by id → <code>Listing</code>; 404 if missing/removed</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-3</td>
+<td>Create</td>
+<td>Seller</td>
+<td>full listing (+optional estate/parcels) → <code>Listing</code>; new listings may enter <code>pending-review</code> (policy)</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-4</td>
+<td>Update/pause</td>
+<td>Seller(own)</td>
+<td>patch; lifecycle transitions active↔paused, draft→pending-review</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-5</td>
+<td>Delete</td>
+<td>Seller(own)/Admin</td>
+<td>soft-delete (<code>removed</code>); parcels detached</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-6</td>
+<td>Record view</td>
+<td>any</td>
+<td>increment views (deduped per session/IP)</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-7</td>
+<td>Featured</td>
+<td>any</td>
+<td>curated/most-viewed subset</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-8</td>
+<td>Similar</td>
+<td>any</td>
+<td>by region/price/type near a listing</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-9</td>
+<td>Seller listings</td>
+<td>Seller(own)/Admin</td>
+<td>by sellerId</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>FR-LST-10</td>
+<td>Regions</td>
+<td>any</td>
+<td>distinct region list for filters</td>
+<td>BE</td>
+</tr>
+</tbody></table>
+<h3>Estates &amp; parcels — geospatial (FR-GEO)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-GEO-1</td>
+<td>List estates</td>
+<td>any</td>
+<td><code>Estate[]</code> (id,name,center,zoom,listingId)</td>
+</tr>
+<tr>
+<td>FR-GEO-2</td>
+<td>Estate parcels</td>
+<td>any</td>
+<td><code>ParcelCollection</code> (GeoJSON) for an estate</td>
+</tr>
+<tr>
+<td>FR-GEO-3</td>
+<td>Get parcel</td>
+<td>any</td>
+<td>by id → <code>ParcelFeature</code></td>
+</tr>
+<tr>
+<td>FR-GEO-4</td>
+<td>Create estate w/ parcels</td>
+<td>Seller</td>
+<td>accept drawn grid or uploaded GeoJSON/KML; <strong>validate</strong> each polygon (closed, non-self-intersecting, min area, within region bounds); reject overlaps within the same estate; honor feature props (plotNumber, price, status)</td>
+</tr>
+<tr>
+<td>FR-GEO-5</td>
+<td>Set parcel status</td>
+<td>Seller(own)/system</td>
+<td>available↔reserved↔sold; sold is terminal except admin correction; status change is <strong>atomic</strong> with purchase</td>
+</tr>
+</tbody></table>
+<h3>Purchases, payments &amp; escrow (FR-BUY)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-BUY-1</td>
+<td>Start purchase</td>
+<td>Buyer</td>
+<td>{plotIds[], paymentMethod} → <strong>atomically reserve</strong> plots, create <code>Purchase(processing)</code>, init payment intent → <code>{purchase, paymentClientData}</code>; 409 if any plot unavailable</td>
+</tr>
+<tr>
+<td>FR-BUY-2</td>
+<td>Payment webhook</td>
+<td>system</td>
+<td>provider → verify signature (idempotent) → on success capture, mark plots <code>sold</code>, purchase→<code>in-escrow</code> with <code>funds-held</code>; on fail purchase→<code>failed</code>, release plots</td>
+</tr>
+<tr>
+<td>FR-BUY-3</td>
+<td>List purchases</td>
+<td>Buyer(own)/Admin</td>
+<td><code>Purchase[]</code></td>
+</tr>
+<tr>
+<td>FR-BUY-4</td>
+<td>Get purchase</td>
+<td>Buyer(own)/Admin</td>
+<td><code>Purchase</code> incl. escrow steps + documents</td>
+</tr>
+<tr>
+<td>FR-BUY-5</td>
+<td>Advance escrow</td>
+<td>Admin/ops</td>
+<td>move <code>documents-transfer</code>→<code>title-handover</code>; <strong>release</strong> (admin) → <code>released</code>, purchase <code>completed</code>, funds ledgered out; notify buyer/seller</td>
+</tr>
+<tr>
+<td>FR-BUY-6</td>
+<td>Monitor toggle</td>
+<td>Buyer(own)</td>
+<td><code>monitored</code> flag for alerts</td>
+</tr>
+<tr>
+<td>FR-BUY-7</td>
+<td>Refund</td>
+<td>Admin</td>
+<td>on dispute/failed handover → provider refund + ledger reversal</td>
+</tr>
+</tbody></table>
+<h3>Verification / KYC (FR-VER)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-VER-1</td>
+<td>Submit case</td>
+<td>Seller</td>
+<td>{listingId, documents[]} → <code>VerificationCase(submitted)</code> + timeline</td>
+</tr>
+<tr>
+<td>FR-VER-2</td>
+<td>List/queue</td>
+<td>Admin</td>
+<td>filter by status</td>
+</tr>
+<tr>
+<td>FR-VER-3</td>
+<td>Get case</td>
+<td>Admin/owner</td>
+<td>full case + documents (signed URLs) + checks</td>
+</tr>
+<tr>
+<td>FR-VER-4</td>
+<td>Review action</td>
+<td>Admin</td>
+<td>approve→<code>verified</code> (listing badge verified) / reject→<code>rejected</code> / request-docs→<code>docs-requested</code>; append timeline + adminNote; per-check pass/fail; notify seller</td>
+</tr>
+</tbody></table>
+<h3>Messaging &amp; notifications (FR-MSG)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-MSG-1</td>
+<td>List conversations</td>
+<td>owner</td>
+<td><code>Conversation[]</code> with unreadBy</td>
+</tr>
+<tr>
+<td>FR-MSG-2</td>
+<td>Start conversation</td>
+<td>Buyer</td>
+<td>{listingId, sellerId, body} → conversation + first message + <strong>lead</strong></td>
+</tr>
+<tr>
+<td>FR-MSG-3</td>
+<td>List messages</td>
+<td>participant</td>
+<td>paged <code>Message[]</code></td>
+</tr>
+<tr>
+<td>FR-MSG-4</td>
+<td>Send message</td>
+<td>participant</td>
+<td>body → <code>Message</code>; realtime fan-out; update lastMessage/unread</td>
+</tr>
+<tr>
+<td>FR-MSG-5</td>
+<td>Mark read</td>
+<td>participant</td>
+<td>zero unread for subject</td>
+</tr>
+<tr>
+<td>FR-MSG-6</td>
+<td>Unread count</td>
+<td>owner</td>
+<td>integer badge</td>
+</tr>
+<tr>
+<td>FR-NOTE-1</td>
+<td>List notifications</td>
+<td>owner</td>
+<td><code>AppNotification[]</code></td>
+</tr>
+<tr>
+<td>FR-NOTE-2</td>
+<td>Mark read / all read</td>
+<td>owner</td>
+<td>update flags</td>
+</tr>
+<tr>
+<td>FR-NOTE-3</td>
+<td>Push (system)</td>
+<td>system/Admin</td>
+<td>create notification + realtime + optional email/SMS</td>
+</tr>
+</tbody></table>
+<h3>Materials shop (FR-MAT)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-MAT-1</td>
+<td>Catalog</td>
+<td>any</td>
+<td>filters q, category, region, sort∈{popular,price-asc,price-desc,rating} → <code>Paged&lt;Material&gt;</code></td>
+</tr>
+<tr>
+<td>FR-MAT-2</td>
+<td>Get material</td>
+<td>any</td>
+<td>by id → <code>Material</code></td>
+</tr>
+<tr>
+<td>FR-MAT-3</td>
+<td>Place order</td>
+<td>Buyer</td>
+<td>{lines[], deliveryAddress, region, paymentMethod} → snapshot price/unit, compute delivery fee + total, pay, create <code>MaterialOrder(processing)</code></td>
+</tr>
+<tr>
+<td>FR-MAT-4</td>
+<td>Advance order</td>
+<td>Supplier/ops</td>
+<td><code>processing→confirmed→dispatched→delivered</code> (fulfilment-owned)</td>
+</tr>
+<tr>
+<td>FR-MAT-5</td>
+<td>List orders</td>
+<td>Buyer(own)/Supplier(sales)</td>
+<td><code>MaterialOrder[]</code></td>
+</tr>
+<tr>
+<td>FR-MAT-6</td>
+<td>Supplier CRUD</td>
+<td>Seller/Supplier(own)</td>
+<td>create/update/delete own <code>Material</code> (from <code>MaterialInput</code>); appears in public catalog</td>
+</tr>
+<tr>
+<td>FR-MAT-7</td>
+<td>Supplier products</td>
+<td>owner</td>
+<td>list own materials</td>
+</tr>
+</tbody></table>
+<h3>Providers, reviews, leads (FR-PRV)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-PRV-1</td>
+<td>List/search providers</td>
+<td>any</td>
+<td>by category/region → <code>ServiceProvider[]</code></td>
+</tr>
+<tr>
+<td>FR-PRV-2</td>
+<td>Get provider</td>
+<td>any</td>
+<td>by id</td>
+</tr>
+<tr>
+<td>FR-PRV-3</td>
+<td>List reviews</td>
+<td>any</td>
+<td>by targetId/targetType</td>
+</tr>
+<tr>
+<td>FR-PRV-4</td>
+<td>Add review</td>
+<td>Buyer/authed</td>
+<td>{targetId,targetType,rating 1–5,body}; one per subject per target; recompute rating/reviewsCount</td>
+</tr>
+<tr>
+<td>FR-PRV-5</td>
+<td>Seller leads</td>
+<td>Seller(own)</td>
+<td><code>Lead[]</code> + status U (new→contacted→qualified→closed)</td>
+</tr>
+<tr>
+<td>FR-PRV-6</td>
+<td>Seller stats</td>
+<td>Seller(own)</td>
+<td>aggregates for dashboard</td>
+</tr>
+</tbody></table>
+<h3>Land-conflict checker (FR-CNF)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-CNF-1</td>
+<td>Run check</td>
+<td>Seller/Buyer; Guest(paid)</td>
+<td>{ring:number[][]} → PostGIS overlap vs registered parcels → <code>ConflictResult</code>; ignore slivers &lt; 1 m²; sort by overlap desc</td>
+</tr>
+<tr>
+<td>FR-CNF-2</td>
+<td>Guest payment gate</td>
+<td>Guest</td>
+<td>one-off fee → issue check token required by FR-CNF-1</td>
+</tr>
+<tr>
+<td>FR-CNF-3</td>
+<td>Email report</td>
+<td>any who ran</td>
+<td>{result/checkId, name, email} → build report, <strong>queue</strong> email, notify if authed → <code>{ok, reference}</code></td>
+</tr>
+<tr>
+<td>FR-CNF-4</td>
+<td>Check history</td>
+<td>authed/Admin</td>
+<td>list prior checks (optional MVP+)</td>
+</tr>
+</tbody></table>
+<h3>Admin (FR-ADM)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Role</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FR-ADM-1</td>
+<td>Platform stats</td>
+<td>Admin</td>
+<td>users, listings, GMV, escrow held, checks, etc.</td>
+</tr>
+<tr>
+<td>FR-ADM-2</td>
+<td>Users</td>
+<td>Admin</td>
+<td>list/search/suspend/role-change</td>
+</tr>
+<tr>
+<td>FR-ADM-3</td>
+<td>Moderation listings</td>
+<td>Admin</td>
+<td>list flagged; moderate (approve/remove/flag)</td>
+</tr>
+<tr>
+<td>FR-ADM-4</td>
+<td>Abuse reports</td>
+<td>Admin</td>
+<td>list; resolve/dismiss/investigate</td>
+</tr>
+</tbody></table>
+<p><strong>Global acceptance criteria (apply to all FRs):</strong> validated input; correct authz; documented success + error
+responses; idempotency on money/mutation endpoints; audit-logged privileged actions; contract test green.</p>
+<hr>
+<h2>7. Non-functional requirements</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Requirement (measurable)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NFR-1</td>
+<td>Performance</td>
+<td>Read APIs p95 ≤ 400 ms, p99 ≤ 800 ms at MVP load; conflict check ≤ 2 s p95</td>
+</tr>
+<tr>
+<td>NFR-2</td>
+<td>Realtime</td>
+<td>Message/notification delivery p95 ≤ 2 s; reconnect ≤ 5 s</td>
+</tr>
+<tr>
+<td>NFR-3</td>
+<td>Availability</td>
+<td>99.9% monthly for API; graceful degradation if WS/email/payment down</td>
+</tr>
+<tr>
+<td>NFR-4</td>
+<td>Scalability</td>
+<td>Stateless API horizontally scalable; workers scale by queue depth; DB read replicas for search</td>
+</tr>
+<tr>
+<td>NFR-5</td>
+<td>Reliability</td>
+<td>Money &amp; escrow operations are ACID + idempotent; no lost/duplicated captures; queue retries w/ DLQ</td>
+</tr>
+<tr>
+<td>NFR-6</td>
+<td>Security</td>
+<td>OWASP ASVS L2; TLS 1.2+; argon2id passwords; RBAC + resource ownership; rate limits; signed webhooks</td>
+</tr>
+<tr>
+<td>NFR-7</td>
+<td>Privacy</td>
+<td>Act 843 + GDPR-style: data minimization, right-to-erasure workflow, PII access logged, documents access-controlled</td>
+</tr>
+<tr>
+<td>NFR-8</td>
+<td>Data retention</td>
+<td>Transactions/audit retained ≥ 7 years (land legal); soft-delete elsewhere; deletion honors legal holds</td>
+</tr>
+<tr>
+<td>NFR-9</td>
+<td>Money representation</td>
+<td>Amounts as <strong>integer minor units (pesewas)</strong> internally; API returns whole-cedi integers to match current contract (see A6/OQ-12); currency <code>GHS</code></td>
+</tr>
+<tr>
+<td>NFR-10</td>
+<td>Time</td>
+<td>All timestamps <strong>ISO-8601 UTC</strong>; frontend localizes to Africa/Accra</td>
+</tr>
+<tr>
+<td>NFR-11</td>
+<td>Rate limiting</td>
+<td>Per-IP + per-user token buckets; stricter on auth, checks, reviews, reports; <code>Retry-After</code> on 429</td>
+</tr>
+<tr>
+<td>NFR-12</td>
+<td>Accessibility</td>
+<td>WCAG 2.1 AA (frontend); see Section 25</td>
+</tr>
+<tr>
+<td>NFR-13</td>
+<td>Browser/mobile</td>
+<td>Evergreen Chrome/Safari/Firefox/Edge; responsive ≥ 360px</td>
+</tr>
+<tr>
+<td>NFR-14</td>
+<td>Observability</td>
+<td>Structured logs w/ correlation IDs; metrics; traces; error tracking; no PII/secrets in logs</td>
+</tr>
+<tr>
+<td>NFR-15</td>
+<td>Backup/recovery</td>
+<td>Daily DB backup + PITR; object-store versioning; documented RPO ≤ 24 h, RTO ≤ 4 h</td>
+</tr>
+<tr>
+<td>NFR-16</td>
+<td>Localization</td>
+<td>English at launch; i18n keys ready (frontend <code>next-intl</code>); currency/number formatting server-neutral</td>
+</tr>
+<tr>
+<td>NFR-17</td>
+<td>Maintainability</td>
+<td>Typed contract, generated client, ≥ 80% backend line coverage on domain logic</td>
+</tr>
+<tr>
+<td>NFR-18</td>
+<td>File limits</td>
+<td>Images ≤ 8 MB (jpg/png/webp); documents ≤ 20 MB (pdf/jpg/png); GeoJSON/KML ≤ 5 MB; AV-scanned</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>8. High-level system architecture</h2>
+<h3>Textual diagram</h3>
+<pre><code>                         ┌───────────────────────────────────────────────┐
+   Browser (users)       │                 FRONTEND (Next.js 16)          │
+   ───────────────       │  App Router · React 19 · Zustand · TanStack Q  │
+        │  HTTPS          │  API client (src/lib/api → real HTTP)          │
+        ▼                 └───────────────┬───────────────────────────────┘
+   CDN / Edge host  ──────────────────────┘  JSON over HTTPS  +  WSS (realtime)
+                                              │
+             ┌────────────────────────────────┼─────────────────────────────────┐
+             ▼                                 ▼                                  ▼
+    ┌─────────────────┐              ┌───────────────────┐              ┌──────────────────┐
+    │  API (NestJS)   │  ◀── Redis ─▶│  Realtime Gateway │              │  Background Workers│
+    │  REST /v1       │  cache/rate  │  (WebSocket)      │              │  (BullMQ)          │
+    │  RBAC · Zod/DTO │  presence    │  chat/notif fan-out│             │  email/escrow/notif│
+    └───┬───────┬─────┘              └─────────┬─────────┘              └────────┬─────────┘
+        │       │                              │                                 │
+        ▼       ▼                              ▼                                 ▼
+ ┌────────────┐ ┌────────────┐        (pub/sub via Redis)              ┌───────────────────┐
+ │ PostgreSQL │ │  Object    │                                        │ 3rd-party services │
+ │ + PostGIS  │ │  Storage   │                                        │ Payments · Email · │
+ │ (relational│ │  (S3)      │  ◀── signed URLs                       │ SMS · (Registry?)  │
+ │  + geo)    │ │ img/docs/  │                                        └───────────────────┘
+ └────────────┘ │ geojson    │                 ▲  payment webhooks (signed) ──────┘
+                └────────────┘─────────────────┘
+</code></pre>
+<h3>Components</h3>
+<ul>
+<li><strong>Frontend (Next.js):</strong> SSR/CSR UI; owns rendering, client state, map; <strong>public</strong>.</li>
+<li><strong>API (NestJS):</strong> stateless REST <code>/v1</code>; validation, RBAC, business rules; <strong>private</strong> behind LB.</li>
+<li><strong>PostgreSQL + PostGIS:</strong> system of record; geometry + relational; <strong>private</strong>.</li>
+<li><strong>Redis:</strong> cache, rate-limit buckets, WS pub/sub, presence, BullMQ queues; <strong>private</strong>.</li>
+<li><strong>Object storage (S3):</strong> images, documents, GeoJSON; served via <strong>signed URLs</strong>; <strong>private buckets</strong>.</li>
+<li><strong>Realtime gateway:</strong> authenticated WebSocket; chat + notification delivery; <strong>public endpoint, token-gated</strong>.</li>
+<li><strong>Workers:</strong> email send, escrow transitions, notification fan-out, analytics rollups, AV scan; <strong>private</strong>.</li>
+<li><strong>Third-party:</strong> payment provider(s), email, SMS, optional registry; reached <strong>server-side only</strong> (secrets on BE).</li>
+</ul>
+<h3>Data flow (buy)</h3>
+<p><code>FE start-purchase → API reserve+intent → provider pay (client) → provider webhook → API capture+escrow → worker notify → FE polls/receives WS</code>.</p>
+<h3>Trust &amp; network boundaries</h3>
+<ul>
+<li><strong>Trust boundary</strong> between browser and API: everything from the client is untrusted; BE re-validates &amp; re-authorizes.</li>
+<li>Only <strong>Frontend</strong>, <strong>API</strong>, <strong>Realtime gateway</strong>, and <strong>payment webhook</strong> endpoints are internet-facing;
+DB/Redis/storage/workers are in a <strong>private network</strong>. Secrets live only on the backend/worker tier.</li>
+</ul>
+<hr>
+<h2>9. Repository and ownership model</h2>
+<p>Two independent repos; integrate only via the <strong>shared contract</strong>.</p>
+<h3>Frontend repository (exists today)</h3>
+<ul>
+<li><strong>Purpose:</strong> the Next.js app users interact with.</li>
+<li><strong>Structure (actual):</strong> <code>src/app</code> (routes), <code>src/components</code>, <code>src/lib/api</code> (<strong>API client seam</strong>), <code>src/lib/mock</code>
+(removed at go-live), <code>src/stores</code> (Zustand), <code>src/data</code> (static parcels → replaced by API), <code>src/types</code>, <code>messages/</code>.</li>
+<li><strong>Env:</strong> <code>NEXT_PUBLIC_API_BASE_URL</code>, <code>NEXT_PUBLIC_WS_URL</code>, optional <code>NEXT_PUBLIC_PAYMENTS_PUBLIC_KEY</code>,
+<code>NEXT_PUBLIC_MAP_TILES_URL</code> (Section 20).</li>
+<li><strong>Build/test/deploy:</strong> <code>npm run build</code> / <code>npm test</code> + Playwright <code>npm run e2e</code> / deploy to edge host.</li>
+<li><strong>API client:</strong> reimplement <code>src/lib/api/*</code> over the <strong>generated typed client</strong> from the shared OpenAPI; keep
+function signatures identical so screens/TanStack Query are untouched.</li>
+<li><strong>Mock strategy:</strong> current <code>src/lib/mock</code> + Prism mock server enable dev before BE is ready; delete mock at cutover.</li>
+<li><strong>Feature ownership:</strong> all UI, client state, map rendering, accessibility, i18n.</li>
+</ul>
+<h3>Backend repository (to build)</h3>
+<ul>
+<li><strong>Purpose:</strong> the API, data, jobs, integrations.</li>
+<li><strong>Structure (recommended):</strong> <code>src/modules/{auth,users,listings,parcels,purchases,payments,verification,messaging, notifications,materials,providers,reviews,leads,conflicts,admin}</code>, <code>src/common</code> (guards, filters, pipes),
+<code>prisma/</code> (schema+migrations), <code>test/</code>, <code>openapi/</code>.</li>
+<li><strong>Env:</strong> DB/Redis/S3 URLs, JWT secrets, provider API keys, email keys (Section 20).</li>
+<li><strong>Migrations:</strong> Prisma migrate; <strong>PostGIS</strong> enabled via SQL migration. <strong>Workers:</strong> BullMQ processors.
+<strong>Scheduled:</strong> saved-search alerts, analytics rollups, escrow SLA reminders.</li>
+<li><strong>Test/deploy:</strong> unit+integration (Testcontainers Postgres/PostGIS) → contract tests → container image → deploy.</li>
+<li><strong>API docs:</strong> OpenAPI generated from DTOs, published to the shared location + Swagger UI.</li>
+</ul>
+<h3>Shared artifacts (single source of integration truth)</h3>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Produced by</th>
+<th>Consumed by</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>OpenAPI spec</strong> (<code>openapi.yaml</code>, versioned)</td>
+<td>Backend</td>
+<td>Frontend (client gen), QA (contract tests)</td>
+<td><code>contracts/</code> repo or package</td>
+</tr>
+<tr>
+<td><strong>JSON Schemas / TS types</strong></td>
+<td>Backend (mirror of <code>src/types</code>)</td>
+<td>Frontend</td>
+<td>published npm package <code>@realestate/contracts</code></td>
+</tr>
+<tr>
+<td><strong>Event schemas</strong> (WS envelopes)</td>
+<td>Backend</td>
+<td>Frontend</td>
+<td><code>contracts/events/*.json</code></td>
+</tr>
+<tr>
+<td><strong>Error-code catalogue</strong></td>
+<td>Backend</td>
+<td>Frontend, QA</td>
+<td><code>contracts/errors.md</code></td>
+</tr>
+<tr>
+<td><strong>Auth &amp; env docs</strong>, <strong>API changelog</strong></td>
+<td>Backend</td>
+<td>All</td>
+<td><code>contracts/</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>10. Frontend technical specification</h2>
+<h3>10.1 Architecture</h3>
+<p>Framework <strong>Next.js 16 App Router</strong>; language <strong>TypeScript (strict)</strong>; rendering <strong>hybrid</strong> (static marketing +
+client-interactive map/dashboards); routing file-based; components <strong>feature-module</strong> folders under
+<code>src/components</code>; <strong>client state</strong> Zustand (persisted: <code>session</code>, <code>favorites</code>, map <code>selection</code>, <code>cart</code>);
+<strong>server state</strong> TanStack Query (caching, retries, invalidation); forms <strong>React Hook Form + Zod</strong>; styling
+<strong>Tailwind v4 + shadcn/Base UI</strong> (polymorphism via <code>render</code> prop); charts <strong>Recharts</strong>; i18n <strong>next-intl</strong>
+(en complete); error boundaries per route segment; analytics/logging via a thin client wrapper.</p>
+<h3>10.2 Screens and routes (each: purpose · roles · data · APIs · states)</h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Screen</th>
+<th>Roles</th>
+<th>Data / APIs</th>
+<th>States (loading/empty/error/success)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/</code></td>
+<td>Landing</td>
+<td>all</td>
+<td>featured listings (FR-LST-7)</td>
+<td>skeleton / — / retry / hero+cards</td>
+</tr>
+<tr>
+<td><code>/listings</code></td>
+<td>Search</td>
+<td>all</td>
+<td>FR-LST-1, regions, saved searches</td>
+<td>skeleton grid / &quot;no results&quot; / retry / results+pagination</td>
+</tr>
+<tr>
+<td><code>/property/[id]</code></td>
+<td>Detail</td>
+<td>all</td>
+<td>FR-LST-2, similar, reviews, start-conversation</td>
+<td>skeleton / — / 404 page / full detail</td>
+</tr>
+<tr>
+<td><code>/map</code></td>
+<td>Plot picker</td>
+<td>all (buy needs buyer)</td>
+<td>estates, parcels (FR-GEO), selection store</td>
+<td>map loader / &quot;no parcels&quot; / tile error toast / interactive map</td>
+</tr>
+<tr>
+<td><code>/checkout</code></td>
+<td>Land checkout</td>
+<td>buyer</td>
+<td>selection, FR-BUY-1/2</td>
+<td>processing spinner / empty-cart redirect / decline path / receipt+escrow</td>
+</tr>
+<tr>
+<td><code>/materials</code></td>
+<td>Materials shop</td>
+<td>all</td>
+<td>FR-MAT-1</td>
+<td>skeleton / &quot;no products&quot; / retry / catalog</td>
+</tr>
+<tr>
+<td><code>/materials/checkout</code></td>
+<td>Materials checkout</td>
+<td>buyer</td>
+<td>cart, FR-MAT-3</td>
+<td>processing / empty / decline / order confirm</td>
+</tr>
+<tr>
+<td><code>/land-check</code></td>
+<td>Conflict checker</td>
+<td>all (guest pays)</td>
+<td>FR-CNF-1/2/3</td>
+<td>idle hint / no-conflict / invalid-polygon / overlay result</td>
+</tr>
+<tr>
+<td><code>/service-providers</code></td>
+<td>Directory</td>
+<td>all</td>
+<td>FR-PRV-1</td>
+<td>skeleton / empty / retry / list</td>
+</tr>
+<tr>
+<td><code>/dashboard/*</code></td>
+<td>Buyer dashboard</td>
+<td>buyer</td>
+<td>purchases, orders, favorites, messages, notifications</td>
+<td>per-tab skeleton/empty/error/data</td>
+</tr>
+<tr>
+<td><code>/seller/*</code></td>
+<td>Seller dashboard</td>
+<td>seller</td>
+<td>listings, wizard, leads, verification, materials, messages</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><code>/admin/*</code></td>
+<td>Admin</td>
+<td>admin</td>
+<td>stats, queue, moderation, users, reports</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><code>/settings</code></td>
+<td>Settings</td>
+<td>authed</td>
+<td>profile/notification prefs</td>
+<td>form states</td>
+</tr>
+<tr>
+<td><code>/login</code>, <code>/register[/role]</code></td>
+<td>Auth</td>
+<td>guest</td>
+<td>FR-AUTH-1/2</td>
+<td>validating / — / field+form errors / redirect to role home</td>
+</tr>
+</tbody></table>
+<p>Every data screen implements the four states explicitly; navigation guards via <code>RequireRole</code> (UX only; BE enforces).</p>
+<h3>10.3 Components (selected significant ones)</h3>
+<p>Layout (nav/footer/role-home routing), shared (Button/Dialog/Toast — Base UI), feature (MapCanvas + selection
+panel, ListingCard/Grid/Filters, CheckoutStepper + EscrowTracker, ConflictChecker + ConflictMap, MaterialsGrid +
+Cart, VerificationForm, AdminTables, Charts). For each: typed <strong>props</strong>, local <strong>state</strong>, emitted <strong>events</strong>,
+<strong>data deps</strong> (which API/query), <strong>validation</strong> (Zod), <strong>a11y</strong> (labels, focus, keyboard), <strong>error handling</strong>
+(query error → boundary/toast), <strong>reusability boundary</strong> (presentational vs container).</p>
+<h3>10.4 State model — where each lives</h3>
+<table>
+<thead>
+<tr>
+<th>State kind</th>
+<th>Home</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Local component</td>
+<td><code>useState</code></td>
+<td>dialog open, form field focus</td>
+</tr>
+<tr>
+<td>Global client</td>
+<td>Zustand (persisted)</td>
+<td>session, favorites, map selection, cart</td>
+</tr>
+<tr>
+<td>Server state</td>
+<td>TanStack Query</td>
+<td>listings, parcels, purchases, messages</td>
+</tr>
+<tr>
+<td>Auth state</td>
+<td>Zustand <code>session</code> + httpOnly refresh cookie</td>
+<td>token, current user</td>
+</tr>
+<tr>
+<td>URL state</td>
+<td>route/searchParams</td>
+<td>listing filters (shareable), map center</td>
+</tr>
+<tr>
+<td>Form state</td>
+<td>RHF</td>
+<td>wizard, checkout, review</td>
+</tr>
+<tr>
+<td>Cached</td>
+<td>Query cache + persisted stores</td>
+<td>last results, unread counts</td>
+</tr>
+<tr>
+<td>Persisted</td>
+<td>localStorage via Zustand</td>
+<td>session, cart, favorites</td>
+</tr>
+</tbody></table>
+<h3>10.5 API integration layer</h3>
+<p>Single typed client: base URL from env; <strong>access token</strong> in <code>Authorization: Bearer</code>; <strong>refresh</strong> on 401 via
+rotating refresh cookie then retry once; request <strong>cancellation</strong> via AbortController (TanStack Query);
+<strong>retry</strong> idempotent GETs (max 2, backoff), never retry non-idempotent without idempotency key; <strong>timeout</strong>
+10 s default; <strong>cache invalidation</strong> by query keys on mutations; <strong>pagination</strong> cursor/offset per contract;
+<strong>uploads</strong> to signed URLs (direct-to-S3) then attach keys; <strong>downloads</strong> via signed URLs; <strong>WS</strong> client with
+auth handshake + reconnect/backoff; <strong>API version</strong> pinned in base path <code>/v1</code>; <strong>error normalization</strong> maps the
+standard error envelope (Section 13) to typed UI errors.</p>
+<h3>10.6 Frontend security</h3>
+<p>Access token in memory (not localStorage) with refresh in <strong>httpOnly SameSite=strict cookie</strong>; React auto-escapes
+(XSS) + sanitize any HTML (e.g., email preview) via allowlist; <strong>CSRF</strong> mitigated by bearer tokens + SameSite;
+<strong>CSP</strong> (self + allowlisted map/payment hosts); <strong>route protection</strong> client guard + BE enforcement;
+<strong>permission-based rendering</strong> hides unauthorized controls; <strong>no secrets</strong> in the bundle (only <code>NEXT_PUBLIC_*</code>).</p>
+<h3>10.7 Frontend testing</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Tool</th>
+<th>Scope</th>
+<th>Coverage goal</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unit</td>
+<td>Vitest</td>
+<td>utils, stores, api adapters</td>
+<td>≥ 80%</td>
+</tr>
+<tr>
+<td>Component</td>
+<td>Vitest + RTL</td>
+<td>cards, forms, checkout</td>
+<td>key components</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td>Vitest + MSW</td>
+<td>screen ↔ mocked API</td>
+<td>main flows</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td>Playwright</td>
+<td>buy flow, seller publish, conflict check</td>
+<td>critical journeys green</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td>axe + Playwright</td>
+<td>key pages</td>
+<td>0 serious violations</td>
+</tr>
+<tr>
+<td>Contract</td>
+<td>schemas/Prism</td>
+<td>responses match OpenAPI</td>
+<td>all consumed endpoints</td>
+</tr>
+<tr>
+<td>Visual (opt.)</td>
+<td>Playwright snapshots</td>
+<td>landing, listing, map</td>
+<td>no unintended diffs</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>11. Backend technical specification</h2>
+<h3>11.1 Architecture</h3>
+<p>Framework <strong>NestJS</strong> (modular, DI); language <strong>TypeScript</strong>; pattern <strong>modular monolith</strong> (feature modules,
+clear boundaries, extractable to services later); <strong>service layer</strong> for business rules; <strong>repository layer</strong> via
+Prisma; domain models mirror <code>src/types</code>; <strong>background jobs</strong> via BullMQ; <strong>event processing</strong> via Redis pub/sub
+(WS) + domain events; <strong>caching</strong> Redis; <strong>file handling</strong> S3 signed URLs + AV scan; structured <strong>logging</strong>
+(pino) with correlation IDs; <strong>config</strong> via env + schema validation at boot.</p>
+<h3>11.2 Backend modules (each: responsibilities · entities · endpoints · events · jobs · authz)</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Owns</th>
+<th>Entities</th>
+<th>Emits events</th>
+<th>Jobs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>auth</td>
+<td>register/login/refresh/reset, sessions, RBAC</td>
+<td>User, RefreshToken, PasswordReset</td>
+<td><code>user.registered</code></td>
+<td>reset-email</td>
+</tr>
+<tr>
+<td>users</td>
+<td>profile, avatars</td>
+<td>User</td>
+<td><code>user.updated</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>listings</td>
+<td>CRUD, search, views</td>
+<td>Listing, ListingDocument</td>
+<td><code>listing.created/updated/removed</code></td>
+<td>search-index, saved-search-match</td>
+</tr>
+<tr>
+<td>parcels</td>
+<td>estates, parcels, status, geometry</td>
+<td>Estate, Parcel(geom)</td>
+<td><code>parcel.status_changed</code></td>
+<td>geojson-validate</td>
+</tr>
+<tr>
+<td>purchases</td>
+<td>escrow state machine, documents</td>
+<td>Purchase, EscrowStep, PurchasePlot, LedgerEntry</td>
+<td><code>purchase.*</code>, <code>escrow.*</code></td>
+<td>doc-generate, escrow-SLA</td>
+</tr>
+<tr>
+<td>payments</td>
+<td>intents, capture, refund, webhooks</td>
+<td>Payment, WebhookEvent</td>
+<td><code>payment.captured/failed/refunded</code></td>
+<td>reconcile</td>
+</tr>
+<tr>
+<td>verification</td>
+<td>KYC cases + review</td>
+<td>VerificationCase, Timeline, Check</td>
+<td><code>verification.decided</code></td>
+<td>notify-seller</td>
+</tr>
+<tr>
+<td>messaging</td>
+<td>conversations, messages</td>
+<td>Conversation, Message</td>
+<td><code>message.created</code></td>
+<td>fan-out</td>
+</tr>
+<tr>
+<td>notifications</td>
+<td>in-app + email/SMS</td>
+<td>Notification</td>
+<td>—</td>
+<td>deliver-email, deliver-sms</td>
+</tr>
+<tr>
+<td>materials</td>
+<td>catalog, orders, supplier CRUD</td>
+<td>Material, MaterialOrder, OrderLine</td>
+<td><code>order.*</code></td>
+<td>fulfilment-updates</td>
+</tr>
+<tr>
+<td>providers</td>
+<td>directory</td>
+<td>ServiceProvider</td>
+<td>—</td>
+<td>rating-recompute</td>
+</tr>
+<tr>
+<td>reviews</td>
+<td>reviews + ratings</td>
+<td>Review</td>
+<td><code>review.created</code></td>
+<td>rating-recompute</td>
+</tr>
+<tr>
+<td>leads</td>
+<td>seller leads + stats</td>
+<td>Lead</td>
+<td><code>lead.created</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>conflicts</td>
+<td>overlap check, paid gate, report email</td>
+<td>LandCheck, CheckPayment</td>
+<td><code>check.completed</code></td>
+<td>build-report-email</td>
+</tr>
+<tr>
+<td>admin</td>
+<td>analytics, moderation, users, reports</td>
+<td>AbuseReport, AuditLog</td>
+<td><code>moderation.*</code></td>
+<td>analytics-rollup</td>
+</tr>
+</tbody></table>
+<h3>11.3 Data model (mirrors <code>src/types</code> — field names are the contract)</h3>
+<p>Key entities and their fields (types abbreviated; all have <code>id</code>, audit <code>createdAt</code>, and soft-delete <code>deletedAt</code>
+where applicable). Store money as integer minor units internally; expose per NFR-9.</p>
+<ul>
+<li><strong>User</strong> <code>{id, name, email(unique), phone, role∈{buyer,seller,provider,admin}, avatarUrl, company?, region, bio?, verified:bool, rating?, reviewsCount?, joinedAt}</code> (+ private: passwordHash, mfaSecret?).</li>
+<li><strong>Listing</strong> <code>{id, title, type∈{land,house,commercial}, landStatus∈{developed,semi-developed,greenfield, undeveloped}, price, negotiable, region, city, address, coords{lat,lng}, sizeAcres, plotsTotal, plotsAvailable, images[], description, amenities[], verification∈{verified,pending,unverified}, sellerId(FK User), sellerType∈ {agent,owner,developer}, estateId?(FK), views, saves, leads, status∈{active,paused,draft,pending-review,flagged, removed}, attributes{...}, documents[ListingDocument], salesAgreement, terms, createdAt}</code>.</li>
+<li><strong>ListingDocument</strong> <code>{id, name, type∈{indenture,site-plan,surveyor-report,id,title-certificate,other}, sizeKb, uploadedAt, verified}</code> (+ private storageKey).</li>
+<li><strong>Estate</strong> <code>{id, name, region, city, center{lat,lng}, zoom, listingId(FK), description}</code>.</li>
+<li><strong>Parcel</strong> (GeoJSON feature) props <code>{id, estateId(FK), plotNumber, owner, status∈{available,reserved,sold}, areaSqm, lengthM, breadthM, price}</code> + <code>geometry: Polygon</code> stored as <strong>PostGIS <code>geometry(Polygon,4326)</code></strong>.</li>
+<li><strong>VerificationCase</strong> <code>{id, listingId, listingTitle, sellerId, sellerName, status∈{submitted,under-review, docs-requested,verified,rejected}, documents[], timeline[{status,date,note?}], checks[{label,passed:bool|null}], submittedAt, adminNote?}</code>.</li>
+<li><strong>Conversation</strong> <code>{id, participantIds[], participants[pick(User)], listingId?, listingTitle?, lastMessage, lastMessageAt, unreadBy:Record&lt;userId,count&gt;}</code>; <strong>Message</strong> <code>{id, conversationId, senderId, body, sentAt}</code>.</li>
+<li><strong>Purchase</strong> <code>{id, receiptNo, buyerId, plots[PurchasePlot], totalAreaSqm, amount, fees, paymentMethod∈ {mtn-momo,vodafone-cash,card}, status∈{processing,in-escrow,completed,failed}, escrow[EscrowStep{key∈ {funds-held,documents-transfer,title-handover,released}, label, description, status∈{complete,current,pending}, date?}], monitored, documents[{name,type}], createdAt}</code>; <strong>PurchasePlot</strong> <code>{parcelId, plotNumber, estateId, estateName, areaSqm, price}</code>. (+ private <strong>LedgerEntry</strong> for double-entry escrow accounting.)</li>
+<li><strong>Review</strong> <code>{id, targetId, targetType∈{agent,provider,listing}, authorId, authorName, authorAvatarUrl, rating 1–5, body, createdAt}</code>.</li>
+<li><strong>ServiceProvider</strong> <code>{id, userId?, name, category∈{surveyor,property-manager,developer,painter,electrician, plumber,photographer}, services[], region, city, rating, reviewsCount, avatarUrl, verified, description, startingPrice, jobsDone, yearsActive}</code>.</li>
+<li><strong>AppNotification</strong> <code>{id, userId, type∈{message,price-drop,verification,escrow,listing,system}, title, body, href?, read, createdAt}</code>.</li>
+<li><strong>SavedSearch</strong> <code>{id, userId, name, filters:ListingFilters, alerts, createdAt}</code>.</li>
+<li><strong>Lead</strong> <code>{id, listingId, listingTitle, buyerId, buyerName, buyerAvatarUrl, kind∈{message,call-request,offer, site-visit}, note?, status∈{new,contacted,qualified,closed}, createdAt}</code>.</li>
+<li><strong>AbuseReport</strong> <code>{id, targetType∈{listing,user}, targetId, targetLabel, reporterName, reason, detail, status∈ {open,investigating,resolved,dismissed}, createdAt}</code>.</li>
+<li><strong>Material</strong> <code>{id, name, category∈{cement,blocks,roofing,steel,aggregates,timber,plumbing,electrical,paint, tools,doors-windows,tiles}, brand, price, unit, supplierName, supplierId?, region, rating, reviewsCount, inStock, description, deliveryDays, popular?}</code>.</li>
+<li><strong>MaterialOrder</strong> <code>{id, orderNo, buyerId, lines[{materialId,name,unit,price,qty}], subtotal, deliveryFee, total, paymentMethod, status∈{processing,confirmed,dispatched,delivered}, deliveryAddress, region, createdAt, eta}</code>.</li>
+<li><strong>LandCheck</strong> <code>{id, userId?|guestToken, searcherRing, searcherSqm, conflicts[ParcelConflict{parcelId,plotNumber, owner,estateId,estateName,status,overlapSqm,overlapRings}], totalOverlapSqm, clear, reference?, createdAt}</code>.</li>
+</ul>
+<p><strong>ER relationships (textual):</strong> User 1—* Listing (sellerId); Listing 1—0..1 Estate; Estate 1—* Parcel; Buyer(User)
+1—* Purchase; Purchase <em>—</em> Parcel (via PurchasePlot); Listing 1—* VerificationCase; User <em>—</em> Conversation; Conversation
+1—* Message; User 1—* Notification/SavedSearch/Lead(as buyer); Supplier(User) 1—* Material; Buyer 1—* MaterialOrder;
+Provider 0..1—1 User; Review *→ (Listing|Provider|User) polymorphic via targetType.</p>
+<p><strong>Indexes:</strong> Listing(region, price, landStatus, status, createdAt), full-text on title/description/city; Parcel
+<strong>GiST on geometry</strong> + (estateId,status); Purchase(buyerId,status); Message(conversationId,sentAt); Material(category,
+region); Notification(userId,read,createdAt); unique(User.email), unique(Review.authorId,targetId,targetType).</p>
+<p><strong>Migration considerations:</strong> enable PostGIS first; seed from the frontend&#39;s mock seed (<code>src/lib/mock/seed.ts</code>,
+<code>src/data/*</code>) for parity in staging; new listings default <code>pending-review</code> if moderation-on.</p>
+<h3>11.4 Business rules</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Rule</th>
+<th>Trigger</th>
+<th>Action / exception</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BR-1</td>
+<td>A plot may be sold once</td>
+<td>purchase capture</td>
+<td>atomic reserve→sold; concurrent → <code>409 PLOT_UNAVAILABLE</code></td>
+</tr>
+<tr>
+<td>BR-2</td>
+<td>Funds held until release</td>
+<td>capture</td>
+<td>ledger credit escrow; only Admin release → debit to seller payable</td>
+</tr>
+<tr>
+<td>BR-3</td>
+<td>Sold parcels are immutable</td>
+<td>status change</td>
+<td>reject unless Admin correction w/ audit</td>
+</tr>
+<tr>
+<td>BR-4</td>
+<td>Verified badge only via approved case</td>
+<td>verification approve</td>
+<td>set listing.verification=verified + notify</td>
+</tr>
+<tr>
+<td>BR-5</td>
+<td>One review per subject per target</td>
+<td>add review</td>
+<td><code>409 REVIEW_EXISTS</code>; recompute aggregates</td>
+</tr>
+<tr>
+<td>BR-6</td>
+<td>Guest conflict check requires paid token</td>
+<td>run check</td>
+<td><code>402 PAYMENT_REQUIRED</code> without valid token</td>
+</tr>
+<tr>
+<td>BR-7</td>
+<td>Overlap slivers &lt; 1 m² ignored</td>
+<td>check compute</td>
+<td>drop from conflicts</td>
+</tr>
+<tr>
+<td>BR-8</td>
+<td>Order price is snapshotted</td>
+<td>place order</td>
+<td>persist unit price at order time (ignore later price change)</td>
+</tr>
+<tr>
+<td>BR-9</td>
+<td>Seller edits only own resources</td>
+<td>any mutate</td>
+<td><code>403 FORBIDDEN</code> on ownership mismatch</td>
+</tr>
+<tr>
+<td>BR-10</td>
+<td>Payment webhooks idempotent</td>
+<td>webhook</td>
+<td>dedupe by provider event id</td>
+</tr>
+</tbody></table>
+<h3>11.5 Authentication &amp; authorization</h3>
+<p>Registration (argon2id) → email verification (optional gate) → login → <strong>JWT access (15 min) + refresh (30 d,
+rotating, reuse-detected)</strong>; logout revokes refresh; <strong>RBAC</strong> guard by role + <strong>ownership</strong> guard by resource;
+admin MFA (TOTP); account lockout after 5 failed logins (15 min); sessions tracked server-side by refresh family;
+all privileged actions <strong>audit-logged</strong>. Auth flow (textual sequence): <code>Client → POST /auth/login → API verify → {access, set-cookie refresh} → Client calls API with Bearer → on 401 → POST /auth/refresh (cookie) → new access → retry</code>.</p>
+<h3>11.6 Background processing</h3>
+<p>Queues (BullMQ/Redis): <code>email</code>, <code>notifications</code>, <code>escrow</code>, <code>documents</code>, <code>analytics</code>, <code>av-scan</code>, <code>saved-search</code>.
+Retry with exponential backoff (e.g., 5 attempts, 2^n s), <strong>DLQ</strong> for exhausted jobs + alert; jobs <strong>idempotent</strong>
+(keyed); priorities (payments/escrow &gt; email &gt; analytics); scheduling via repeatable jobs (nightly rollups,
+saved-search alerts, escrow SLA reminders); bounded <strong>concurrency</strong>; per-queue monitoring + failure alerts.</p>
+<h3>11.7 Backend security</h3>
+<p>Input validation (DTO + Zod/class-validator); output serialization (strip private fields via response DTOs);
+parameterized queries via Prisma (<strong>no SQL injection</strong>); authn (JWT) + authz (RBAC + ownership) on every route;
+TLS in transit; <strong>encryption at rest</strong> for DB + documents (KMS); secrets in a manager (never in code/logs);
+rate limiting (Section 11 NFR-11); abuse prevention on checks/reviews/reports; <strong>audit logging</strong> of privileged
+actions; dependency scanning (npm audit + SCA in CI); <strong>file-upload security</strong> (type/size validation, AV scan,
+random keys, no execution, signed short-lived URLs); <strong>webhook signature verification</strong> (payments/email); PII
+handling per Act 843 (access-controlled, minimized, erasable).</p>
+<h3>11.8 Backend testing</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Tool</th>
+<th>Scope</th>
+<th>Goal</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unit</td>
+<td>Jest/Vitest</td>
+<td>services, geometry, ledger</td>
+<td>≥ 85% domain</td>
+</tr>
+<tr>
+<td>Repository</td>
+<td>Testcontainers PG+PostGIS</td>
+<td>queries, geo overlap</td>
+<td>correctness</td>
+</tr>
+<tr>
+<td>Integration/API</td>
+<td>Supertest</td>
+<td>endpoint + authz</td>
+<td>all endpoints</td>
+</tr>
+<tr>
+<td>Contract</td>
+<td>Prism/Dredd vs OpenAPI</td>
+<td>responses match schema</td>
+<td>all</td>
+</tr>
+<tr>
+<td>Migration</td>
+<td>CI</td>
+<td>up/down + seed</td>
+<td>green</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>ZAP/npm-audit</td>
+<td>authz, injection, headers</td>
+<td>0 high</td>
+</tr>
+<tr>
+<td>Load</td>
+<td>k6</td>
+<td>search, check, buy</td>
+<td>meet NFR-1/2</td>
+</tr>
+<tr>
+<td>Worker</td>
+<td>Jest</td>
+<td>retry/idempotency/DLQ</td>
+<td>key jobs</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>12. API contract</h2>
+<p><strong>Style:</strong> REST/JSON. <strong>Base URL:</strong> <code>https://api.realestate.example/v1</code>. <strong>Versioning:</strong> URL major (<code>/v1</code>) +
+deprecation headers. <strong>Content-Type:</strong> <code>application/json</code> (uploads via signed URLs / multipart to storage).
+<strong>Auth:</strong> <code>Authorization: Bearer &lt;access&gt;</code>; refresh via httpOnly cookie. <strong>Correlation:</strong> accept/emit
+<code>X-Request-Id</code>. <strong>Dates:</strong> ISO-8601 UTC. <strong>Money:</strong> integer GHS (see NFR-9), field <code>amount</code>/<code>price</code>.
+<strong>Pagination:</strong> <code>?page=&amp;pageSize=</code> → <code>Paged&lt;T&gt;{items,total,page,pageSize,totalPages}</code> (matches frontend).
+<strong>Filtering/sorting/search:</strong> query params mirroring <code>ListingFilters</code>/<code>MaterialFilters</code>. <strong>Idempotency:</strong>
+<code>Idempotency-Key</code> header required on POST purchases/orders/payments. <strong>Rate limits:</strong> <code>X-RateLimit-*</code> + <code>429 Retry-After</code>. <strong>Deprecation:</strong> <code>Deprecation</code>/<code>Sunset</code> headers + changelog; no silent breaking change.</p>
+<h3>Endpoint catalogue (maps 1:1 to <code>src/lib/api/*</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Maps to</th>
+<th>Roles</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POST</td>
+<td><code>/auth/register</code></td>
+<td>auth.register</td>
+<td>guest</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/login</code></td>
+<td>auth.login</td>
+<td>guest</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/refresh</code></td>
+<td>—</td>
+<td>any</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/logout</code></td>
+<td>auth.logout</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/auth/me</code></td>
+<td>auth.getSession</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/password/reset-request</code></td>
+<td>auth</td>
+<td>guest</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/password/reset</code></td>
+<td>auth</td>
+<td>guest</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/users/:id</code></td>
+<td>users.getUser</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/users/me</code></td>
+<td>users.updateProfile</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/listings</code></td>
+<td>listings.getListings</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/listings/featured</code></td>
+<td>listings.getFeatured</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/listings/:id</code></td>
+<td>listings.getListing</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/listings/:id/similar</code></td>
+<td>listings.getSimilar</td>
+<td>any</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/listings</code></td>
+<td>listings.createListing</td>
+<td>seller</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/listings/:id</code></td>
+<td>listings.updateListing</td>
+<td>seller(own)</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/listings/:id</code></td>
+<td>listings.deleteListing</td>
+<td>seller(own)/admin</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/listings/:id/view</code></td>
+<td>listings.recordView</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/sellers/:id/listings</code></td>
+<td>listings.getSellerListings</td>
+<td>seller(own)/admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/regions</code></td>
+<td>listings.getRegions</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/estates</code></td>
+<td>parcels.getEstates</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/estates/:id/parcels</code></td>
+<td>parcels.getParcels</td>
+<td>any</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/estates</code></td>
+<td>parcels.createEstate</td>
+<td>seller</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/parcels/:id</code></td>
+<td>parcels.getParcelById</td>
+<td>any</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/parcels/:id/status</code></td>
+<td>parcels.setParcelStatuses</td>
+<td>seller(own)/system</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/purchases</code></td>
+<td>purchases.startPurchase</td>
+<td>buyer</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/purchases</code></td>
+<td>purchases.getPurchases</td>
+<td>buyer(own)/admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/purchases/:id</code></td>
+<td>purchases.getPurchase</td>
+<td>buyer(own)/admin</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/purchases/:id/escrow/advance</code></td>
+<td>purchases.advanceEscrow</td>
+<td>admin/ops</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/purchases/:id/monitor</code></td>
+<td>purchases.toggleMonitor</td>
+<td>buyer(own)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/payments/webhook</code></td>
+<td>(new)</td>
+<td>provider</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/verification-cases</code></td>
+<td>verification.getCases</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/verification-cases/:id</code></td>
+<td>verification.getCase</td>
+<td>admin/owner</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/verification-cases</code></td>
+<td>verification.submit</td>
+<td>seller</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/verification-cases/:id/actions</code></td>
+<td>verification.review</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/conversations</code></td>
+<td>messages.getConversations</td>
+<td>authed(own)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/conversations</code></td>
+<td>messages.startConversation</td>
+<td>buyer</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/conversations/:id/messages</code></td>
+<td>messages.getMessages</td>
+<td>participant</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/conversations/:id/messages</code></td>
+<td>messages.sendMessage</td>
+<td>participant</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/conversations/:id/read</code></td>
+<td>messages.markRead</td>
+<td>participant</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/me/unread-count</code></td>
+<td>messages.getUnread</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/notifications</code></td>
+<td>notifications.get</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/notifications/:id/read</code></td>
+<td>notifications.markRead</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/notifications/read-all</code></td>
+<td>notifications.markAllRead</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/materials</code></td>
+<td>materials.getMaterials</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/materials/:id</code></td>
+<td>materials.getMaterial</td>
+<td>any</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/materials</code></td>
+<td>materials.createMaterial</td>
+<td>supplier</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/materials/:id</code></td>
+<td>materials.updateMaterial</td>
+<td>supplier(own)</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/materials/:id</code></td>
+<td>materials.deleteMaterial</td>
+<td>supplier(own)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/suppliers/:id/materials</code></td>
+<td>materials.getSupplierMaterials</td>
+<td>supplier(own)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/material-orders</code></td>
+<td>materials.placeOrder</td>
+<td>buyer</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/material-orders</code></td>
+<td>materials.getOrders</td>
+<td>buyer(own)/supplier</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/material-orders/:id/advance</code></td>
+<td>materials.advanceOrder</td>
+<td>supplier/ops</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/providers</code></td>
+<td>providers.getProviders</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/providers/:id</code></td>
+<td>providers.getProvider</td>
+<td>any</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/reviews</code></td>
+<td>reviews.getReviews</td>
+<td>any</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/reviews</code></td>
+<td>reviews.addReview</td>
+<td>authed</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/sellers/:id/leads</code></td>
+<td>leads.getLeads</td>
+<td>seller(own)</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/leads/:id</code></td>
+<td>leads.updateLead</td>
+<td>seller(own)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/sellers/:id/stats</code></td>
+<td>leads.getStats</td>
+<td>seller(own)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/land-checks</code></td>
+<td>conflicts.checkLandConflict</td>
+<td>authed / guest(paid)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/land-checks/guest-payment</code></td>
+<td>(new)</td>
+<td>guest</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/land-checks/:id/email</code></td>
+<td>conflicts.sendConflictReportEmail</td>
+<td>ran-check</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/stats</code></td>
+<td>admin.getStats</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/users</code></td>
+<td>admin.getUsers</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/listings</code></td>
+<td>admin.getModerationListings</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/admin/listings/:id/moderate</code></td>
+<td>admin.moderate</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/reports</code></td>
+<td>admin.getReports</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/admin/reports/:id</code></td>
+<td>admin.resolveReport</td>
+<td>admin</td>
+</tr>
+</tbody></table>
+<h3>Fully-specified example endpoints</h3>
+<p><strong>POST <code>/purchases</code></strong> — start a land purchase.
+Roles: buyer. Headers: <code>Authorization</code>, <code>Idempotency-Key</code>. Body:</p>
+<pre><code class="language-json">{ &quot;plotIds&quot;: [&quot;oyibi-hillcrest-032&quot;,&quot;oyibi-hillcrest-033&quot;], &quot;paymentMethod&quot;: &quot;mtn-momo&quot; }
+</code></pre>
+<p>Processing: validate plots exist &amp; <code>available</code>; <strong>atomically reserve</strong>; create <code>Purchase(processing)</code>; init
+payment intent. Success <code>201</code>:</p>
+<pre><code class="language-json">{ &quot;data&quot;: { &quot;purchase&quot;: { &quot;id&quot;:&quot;pur_9x&quot;, &quot;receiptNo&quot;:&quot;RE-2026-0007&quot;, &quot;status&quot;:&quot;processing&quot;,
+  &quot;plots&quot;:[{&quot;parcelId&quot;:&quot;oyibi-hillcrest-032&quot;,&quot;plotNumber&quot;:&quot;OY-032&quot;,&quot;estateId&quot;:&quot;oyibi-hillcrest&quot;,
+  &quot;estateName&quot;:&quot;Oyibi Hillcrest Gardens&quot;,&quot;areaSqm&quot;:650,&quot;price&quot;:42000}], &quot;amount&quot;:84000, &quot;fees&quot;:1680,
+  &quot;paymentMethod&quot;:&quot;mtn-momo&quot;, &quot;escrow&quot;:[{&quot;key&quot;:&quot;funds-held&quot;,&quot;label&quot;:&quot;Funds held&quot;,&quot;status&quot;:&quot;pending&quot;}],
+  &quot;monitored&quot;:false, &quot;documents&quot;:[], &quot;createdAt&quot;:&quot;2026-07-24T10:00:00Z&quot; },
+  &quot;paymentClientData&quot;: { &quot;provider&quot;:&quot;paystack&quot;, &quot;reference&quot;:&quot;psk_abc&quot;, &quot;authorizationUrl&quot;:&quot;https://…&quot; } },
+  &quot;meta&quot;: { &quot;requestId&quot;:&quot;req_123&quot; } }
+</code></pre>
+<p>Errors: <code>409 PLOT_UNAVAILABLE</code> (with which plotIds), <code>422 VALIDATION</code>, <code>401</code>. Side effects: plots reserved;
+<code>payment.intent.created</code>. Idempotent by key. <strong>FE:</strong> selection→checkout. <strong>BE:</strong> reservation + payment init.</p>
+<p><strong>POST <code>/land-checks</code></strong> — run a boundary conflict check.
+Roles: authed, or guest with <code>X-Check-Token</code>. Body: <code>{ &quot;ring&quot;: [[-0.087,5.826],[-0.086,5.826],[-0.086,5.827], [-0.087,5.827],[-0.087,5.826]] }</code>. Processing: close ring; validate simple polygon; PostGIS <code>ST_Intersection</code>/
+<code>ST_Area</code> vs registered parcels; drop &lt;1 m². Success <code>200</code>: <code>ConflictResult</code> (see 11.3). Errors: <code>402 PAYMENT_REQUIRED</code> (guest, no token), <code>422 INVALID_POLYGON</code>. Emits <code>check.completed</code>.</p>
+<p><strong>GET <code>/listings</code></strong> — search. Query mirrors <code>ListingFilters</code>. <code>200</code>: <code>Paged&lt;Listing&gt;</code>. No side effects. Cacheable.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> the backend team publishes a full <strong>OpenAPI 3.1</strong> document covering every row above with request/
+response schemas generated from DTOs; it is the versioned integration artifact (Section 9). This section is its outline.</p>
+</blockquote>
+<hr>
+<h2>13. Standard API response formats</h2>
+<p><strong>Success envelope:</strong> <code>{ &quot;data&quot;: &lt;payload&gt;, &quot;meta&quot;: { &quot;requestId&quot;: &quot;…&quot;, &quot;pagination&quot;?: {…} } }</code>.
+<strong>Error envelope:</strong> <code>{ &quot;error&quot;: { &quot;code&quot;:&quot;PLOT_UNAVAILABLE&quot;, &quot;message&quot;:&quot;Human readable&quot;, &quot;details&quot;?:{…}, &quot;fieldErrors&quot;?:{&quot;email&quot;:&quot;Already in use&quot;}, &quot;requestId&quot;:&quot;…&quot;, &quot;timestamp&quot;:&quot;2026-07-24T10:00:00Z&quot; } }</code>.</p>
+<h3>Error-code catalogue (excerpt)</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>HTTP</th>
+<th>Meaning</th>
+<th>Frontend behavior</th>
+<th>Retryable</th>
+<th>User message</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>VALIDATION</td>
+<td>422</td>
+<td>Bad input</td>
+<td>show field errors</td>
+<td>no</td>
+<td>&quot;Please fix the highlighted fields.&quot;</td>
+</tr>
+<tr>
+<td>BAD_CREDENTIALS</td>
+<td>401</td>
+<td>Login failed</td>
+<td>show form error</td>
+<td>no</td>
+<td>&quot;Email or password is incorrect.&quot;</td>
+</tr>
+<tr>
+<td>UNAUTHENTICATED</td>
+<td>401</td>
+<td>No/expired token</td>
+<td>refresh→retry, else login</td>
+<td>once</td>
+<td>—</td>
+</tr>
+<tr>
+<td>FORBIDDEN</td>
+<td>403</td>
+<td>Not allowed</td>
+<td>toast + hide action</td>
+<td>no</td>
+<td>&quot;You don&#39;t have access to this.&quot;</td>
+</tr>
+<tr>
+<td>NOT_FOUND</td>
+<td>404</td>
+<td>Missing resource</td>
+<td>404 page/empty</td>
+<td>no</td>
+<td>&quot;Not found.&quot;</td>
+</tr>
+<tr>
+<td>PLOT_UNAVAILABLE</td>
+<td>409</td>
+<td>Plot taken</td>
+<td>refresh map, deselect</td>
+<td>no</td>
+<td>&quot;That plot was just taken.&quot;</td>
+</tr>
+<tr>
+<td>REVIEW_EXISTS</td>
+<td>409</td>
+<td>Duplicate review</td>
+<td>disable submit</td>
+<td>no</td>
+<td>&quot;You already reviewed this.&quot;</td>
+</tr>
+<tr>
+<td>PAYMENT_REQUIRED</td>
+<td>402</td>
+<td>Guest check unpaid</td>
+<td>open pay dialog</td>
+<td>after pay</td>
+<td>&quot;Pay to run this check.&quot;</td>
+</tr>
+<tr>
+<td>INVALID_POLYGON</td>
+<td>422</td>
+<td>Self-intersecting boundary</td>
+<td>highlight boundary</td>
+<td>no</td>
+<td>&quot;Boundary can&#39;t cross itself.&quot;</td>
+</tr>
+<tr>
+<td>RATE_LIMITED</td>
+<td>429</td>
+<td>Too many requests</td>
+<td>backoff + toast</td>
+<td>after Retry-After</td>
+<td>&quot;Slow down a moment.&quot;</td>
+</tr>
+<tr>
+<td>PAYMENT_DECLINED</td>
+<td>402/200-webhook</td>
+<td>Payment failed</td>
+<td>show decline path</td>
+<td>retry pay</td>
+<td>&quot;Payment was declined.&quot;</td>
+</tr>
+<tr>
+<td>CONFLICT</td>
+<td>409</td>
+<td>State conflict</td>
+<td>refetch</td>
+<td>no</td>
+<td>—</td>
+</tr>
+<tr>
+<td>SERVER_ERROR</td>
+<td>500</td>
+<td>Unexpected</td>
+<td>error boundary + report</td>
+<td>yes (idempotent)</td>
+<td>&quot;Something went wrong.&quot;</td>
+</tr>
+<tr>
+<td>SERVICE_UNAVAILABLE</td>
+<td>503</td>
+<td>Dependency down</td>
+<td>degrade + retry</td>
+<td>yes</td>
+<td>&quot;Temporarily unavailable.&quot;</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>14. Real-time communication</h2>
+<p><strong>Transport:</strong> authenticated <strong>WebSocket</strong> (WSS) with Redis pub/sub fan-out (OQ-8). Fallback: TanStack Query
+polling if WS unavailable. <strong>Auth:</strong> access token in connect handshake; server validates + subscribes the socket
+to the user&#39;s channels. <strong>Channels:</strong> <code>user:{id}</code> (notifications, unread), <code>conversation:{id}</code> (messages),
+<code>purchase:{id}</code> (escrow updates). <strong>Envelope:</strong> <code>{ &quot;event&quot;:&quot;message.created&quot;, &quot;id&quot;:&quot;evt_1&quot;, &quot;ts&quot;:&quot;…&quot;, &quot;data&quot;:{…} }</code>. <strong>Reconnect:</strong> exponential backoff; on reconnect the client <strong>re-fetches</strong> missed state via REST
+(source of truth), so delivery is at-least-once + REST reconciliation (no strict ordering guarantee needed).
+Heartbeats (ping/pong 30 s); duplicate events deduped by <code>id</code>; <strong>backpressure</strong> via per-socket send buffer limit;
+connection limits per user.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Producer</th>
+<th>Consumer</th>
+<th>Trigger</th>
+<th>Payload</th>
+<th>Authz</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>message.created</code></td>
+<td>messaging</td>
+<td>participants</td>
+<td>new message</td>
+<td><code>Message</code></td>
+<td>participant only</td>
+<td>at-least-once + REST reconcile</td>
+</tr>
+<tr>
+<td><code>conversation.updated</code></td>
+<td>messaging</td>
+<td>participants</td>
+<td>lastMessage/unread change</td>
+<td><code>{conversationId,lastMessage,unreadBy}</code></td>
+<td>participant</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><code>notification.created</code></td>
+<td>notifications</td>
+<td>owner</td>
+<td>new notification</td>
+<td><code>AppNotification</code></td>
+<td>owner</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><code>escrow.updated</code></td>
+<td>purchases</td>
+<td>buyer(+seller)</td>
+<td>step change</td>
+<td><code>{purchaseId, escrow[]}</code></td>
+<td>owner</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><code>parcel.status_changed</code></td>
+<td>parcels</td>
+<td>map viewers (opt.)</td>
+<td>plot sold/reserved</td>
+<td><code>{parcelId,status}</code></td>
+<td>public</td>
+<td>best-effort</td>
+</tr>
+<tr>
+<td><code>check.completed</code></td>
+<td>conflicts</td>
+<td>requester</td>
+<td>async check done</td>
+<td><code>{checkId}</code></td>
+<td>requester</td>
+<td>at-least-once</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>15. Third-party integrations</h2>
+<p>Credentials stay <strong>server-side</strong>; only an explicitly public payment key may reach the browser (allowlisted in CSP).</p>
+<table>
+<thead>
+<tr>
+<th>Integration</th>
+<th>Purpose</th>
+<th>Auth</th>
+<th>BE responsibility</th>
+<th>FE responsibility</th>
+<th>Failure behavior</th>
+<th>Sandbox</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Payments</strong> (Paystack/Flutterwave/MoMo — OQ-5)</td>
+<td>Charge MoMo/card; escrow funding</td>
+<td>secret key + webhook secret</td>
+<td>init intent, verify webhook (signature+idempotent), capture/refund, reconcile</td>
+<td>render provider widget/redirect with public key</td>
+<td>mark purchase failed, release plots, user retry</td>
+<td>provider test keys</td>
+</tr>
+<tr>
+<td><strong>Email</strong> (Resend/ZeptoMail — OQ-6)</td>
+<td>Conflict reports, receipts, verification, resets</td>
+<td>API key + verified domain (SPF/DKIM/DMARC)</td>
+<td>queue+send, handle bounces/complaints via webhook</td>
+<td>none (server-sent)</td>
+<td>retry queue→DLQ; user still sees in-app</td>
+<td>provider sandbox</td>
+</tr>
+<tr>
+<td><strong>SMS</strong> (optional — OQ-9)</td>
+<td>OTP, delivery/escrow alerts</td>
+<td>API key</td>
+<td>send, rate-limit</td>
+<td>none</td>
+<td>fall back to email/in-app</td>
+<td>test numbers</td>
+</tr>
+<tr>
+<td><strong>Object storage</strong> (S3/GCS/R2 — OQ-7)</td>
+<td>images, documents, GeoJSON</td>
+<td>IAM creds</td>
+<td>issue signed upload/download URLs, lifecycle, AV scan</td>
+<td>upload direct via signed URL</td>
+<td>block on scan fail; retry</td>
+<td>local MinIO</td>
+</tr>
+<tr>
+<td><strong>Map tiles</strong> (Esri/OSM)</td>
+<td>satellite + street basemap</td>
+<td>tile URL/key</td>
+<td>proxy/allowlist if keyed</td>
+<td>render via MapLibre</td>
+<td>show street fallback</td>
+<td>public tiles</td>
+</tr>
+<tr>
+<td><strong>Land registry</strong> (optional — OQ-3)</td>
+<td>authoritative parcel truth</td>
+<td>TBD</td>
+<td>sync/verify parcels; attach official refs</td>
+<td>show &quot;official&quot; badge</td>
+<td>advisory-only disclaimer</td>
+<td>TBD</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>16. Validation rules (catalogue excerpt)</h2>
+<p>Backend is the <strong>final authority</strong>; frontend mirrors for UX. Each: type · required · bounds · format · normalize ·
+error code · message.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Rules</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>email</td>
+<td>string</td>
+<td>required, RFC email, lowercased, ≤254</td>
+<td>VALIDATION/<code>email</code></td>
+</tr>
+<tr>
+<td>password</td>
+<td>string</td>
+<td>required, ≥10, ≥1 letter+number, not breached-common</td>
+<td>VALIDATION/<code>password</code></td>
+</tr>
+<tr>
+<td>phone</td>
+<td>string</td>
+<td>required, Ghana <code>+233</code>/0-format normalized to E.164</td>
+<td>VALIDATION/<code>phone</code></td>
+</tr>
+<tr>
+<td>role (register)</td>
+<td>enum</td>
+<td>one of buyer/seller/provider</td>
+<td>VALIDATION/<code>role</code></td>
+</tr>
+<tr>
+<td>listing.price</td>
+<td>int</td>
+<td>required, ≥ 0, ≤ 1e9 (GHS)</td>
+<td>VALIDATION/<code>price</code></td>
+</tr>
+<tr>
+<td>listing.title</td>
+<td>string</td>
+<td>required, 5–120</td>
+<td>VALIDATION/<code>title</code></td>
+</tr>
+<tr>
+<td>coords</td>
+<td>obj</td>
+<td>lat −90..90, lng −180..180; within GH bounds (soft)</td>
+<td>VALIDATION/<code>coords</code></td>
+</tr>
+<tr>
+<td>parcel ring</td>
+<td>number[][]</td>
+<td>≥4 points, closed, non-self-intersecting, area ≥ 10 m²</td>
+<td>INVALID_POLYGON</td>
+</tr>
+<tr>
+<td>review.rating</td>
+<td>int</td>
+<td>1–5</td>
+<td>VALIDATION/<code>rating</code></td>
+</tr>
+<tr>
+<td>order.qty</td>
+<td>int</td>
+<td>1–9999</td>
+<td>VALIDATION/<code>qty</code></td>
+</tr>
+<tr>
+<td>deliveryAddress</td>
+<td>string</td>
+<td>required, 5–200</td>
+<td>VALIDATION/<code>deliveryAddress</code></td>
+</tr>
+<tr>
+<td>upload (image)</td>
+<td>file</td>
+<td>jpg/png/webp, ≤8 MB</td>
+<td>VALIDATION/<code>file</code></td>
+</tr>
+<tr>
+<td>upload (doc)</td>
+<td>file</td>
+<td>pdf/jpg/png, ≤20 MB, AV clean</td>
+<td>VALIDATION/<code>file</code></td>
+</tr>
+<tr>
+<td>geojson/kml</td>
+<td>file</td>
+<td>valid geometry, ≤5 MB, ≤500 features</td>
+<td>INVALID_POLYGON</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>17. Error and failure handling</h2>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Backend returns</th>
+<th>Frontend does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Validation failure</td>
+<td>422 + fieldErrors</td>
+<td>inline field errors, keep form</td>
+</tr>
+<tr>
+<td>Auth failure</td>
+<td>401</td>
+<td>refresh once → else redirect to login</td>
+</tr>
+<tr>
+<td>Authorization failure</td>
+<td>403</td>
+<td>toast; hide action</td>
+</tr>
+<tr>
+<td>Not found</td>
+<td>404</td>
+<td>404 page / empty state</td>
+</tr>
+<tr>
+<td>Duplicate/conflict</td>
+<td>409 (+code)</td>
+<td>contextual message; refetch</td>
+</tr>
+<tr>
+<td>Rate limited</td>
+<td>429 + Retry-After</td>
+<td>backoff, disable, toast</td>
+</tr>
+<tr>
+<td>Server error</td>
+<td>500 (requestId)</td>
+<td>error boundary + &quot;report&quot; with requestId</td>
+</tr>
+<tr>
+<td>Database failure</td>
+<td>503</td>
+<td>retry idempotent; maintenance notice</td>
+</tr>
+<tr>
+<td>External-service failure (pay/email)</td>
+<td>502/503 or webhook-later</td>
+<td>show pending/decline; queue continues</td>
+</tr>
+<tr>
+<td>Network/timeout</td>
+<td>client-side</td>
+<td>retry idempotent GET; offline banner</td>
+</tr>
+<tr>
+<td>Partial failure (order line OOS)</td>
+<td>409 with details</td>
+<td>show which line; let user adjust</td>
+</tr>
+<tr>
+<td>WebSocket disconnect</td>
+<td>—</td>
+<td>reconnect + REST reconcile</td>
+</tr>
+<tr>
+<td>Stale data / version mismatch</td>
+<td>409 or <code>Deprecation</code></td>
+<td>refetch; prompt refresh on major version change</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>18. API mocking and parallel development</h2>
+<p>Contract-first: backend drafts <strong>OpenAPI</strong> → both teams review → committed to <code>contracts/</code>. Frontend develops
+against (a) the <strong>existing <code>src/lib/mock</code></strong> layer and (b) a <strong>Prism</strong> mock server generated from OpenAPI; static
+fixtures come from the current seed data. A <strong>generated typed client</strong> + shared TS types package keep FE/BE in
+sync. <strong>Contract tests</strong> (Dredd/Prism) validate the real backend against the spec in CI. Auth is <strong>stubbed</strong> in
+mock mode; <strong>mock WebSocket</strong> emits sample events. A shared <strong>integration environment</strong> hosts the latest backend.
+<strong>Contract lock:</strong> the OpenAPI version is frozen per release at the start of the QA phase; changes after lock go
+through Section 19.</p>
+<hr>
+<h2>19. API change-management process</h2>
+<p>The <strong>backend team owns</strong> the API contract. Changes are proposed via PR to <code>contracts/</code> with a rationale and a
+FE-impact note; reviewed by a FE + BE representative. <strong>Breaking changes</strong> (removed/renamed field, type change,
+new required input, semantic change) require a <strong>major version bump</strong> (<code>/v2</code>) and a migration window; additive
+changes are minor. Deprecated fields are marked (<code>Deprecation</code>/<code>Sunset</code> headers + changelog), kept for <strong>≥ 1
+release / 60 days</strong>, then removed. Every change updates the <strong>API changelog</strong> and must pass <strong>contract tests</strong>;
+releases are coordinated so no backend change <strong>silently breaks</strong> the frontend.</p>
+<hr>
+<h2>20. Environment and configuration</h2>
+<p>Environments: <strong>local</strong>, <strong>test/CI</strong>, <strong>shared dev</strong>, <strong>staging</strong>, <strong>production</strong>. Never commit real secrets.</p>
+<h3>Frontend env</h3>
+<table>
+<thead>
+<tr>
+<th>Var</th>
+<th>Purpose</th>
+<th>Req</th>
+<th>Example (non-secret)</th>
+<th>Secret</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NEXT_PUBLIC_API_BASE_URL</code></td>
+<td>REST base</td>
+<td>yes</td>
+<td><code>https://api-staging.realestate.example/v1</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_WS_URL</code></td>
+<td>WebSocket</td>
+<td>yes</td>
+<td><code>wss://api-staging…/ws</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_PAYMENTS_PUBLIC_KEY</code></td>
+<td>client pay widget</td>
+<td>if card widget</td>
+<td><code>pk_test_…</code></td>
+<td>no (publishable)</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_MAP_TILES_URL</code></td>
+<td>basemap</td>
+<td>yes</td>
+<td>Esri/OSM template</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_ENV</code></td>
+<td>env label</td>
+<td>yes</td>
+<td><code>staging</code></td>
+<td>no</td>
+</tr>
+</tbody></table>
+<h3>Backend env</h3>
+<table>
+<thead>
+<tr>
+<th>Var</th>
+<th>Purpose</th>
+<th>Req</th>
+<th>Secret</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DATABASE_URL</code></td>
+<td>Postgres+PostGIS</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>REDIS_URL</code></td>
+<td>cache/queues</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>JWT_ACCESS_SECRET</code> / <code>JWT_REFRESH_SECRET</code></td>
+<td>token signing</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>S3_ENDPOINT</code>/<code>S3_BUCKET</code>/<code>S3_KEY</code>/<code>S3_SECRET</code></td>
+<td>storage</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>PAYMENTS_SECRET_KEY</code> / <code>PAYMENTS_WEBHOOK_SECRET</code></td>
+<td>payments</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>EMAIL_API_KEY</code> / <code>EMAIL_FROM</code> / <code>EMAIL_DOMAIN</code></td>
+<td>transactional email</td>
+<td>yes</td>
+<td>key: yes</td>
+</tr>
+<tr>
+<td><code>SMS_API_KEY</code></td>
+<td>OTP/alerts</td>
+<td>optional</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>CORS_ORIGINS</code></td>
+<td>allowed FE origins</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>APP_BASE_URL</code></td>
+<td>links in emails</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>RATE_LIMIT_*</code>, <code>LOG_LEVEL</code>, <code>SENTRY_DSN</code></td>
+<td>ops</td>
+<td>optional</td>
+<td>dsn: yes</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>21. Deployment architecture</h2>
+<h3>Frontend</h3>
+<p>Host: edge/CDN platform (e.g., Vercel/Cloudflare). Build <code>npm run build</code> → hybrid static+server output; env vars
+per environment; <strong>preview deployments</strong> per PR; CDN caching for static + <code>stale-while-revalidate</code>; rollback to
+prior immutable deployment; custom domain + TLS.</p>
+<h3>Backend</h3>
+<p>Host: containerized runtime near the DB (e.g., managed containers/K8s). Docker image for <strong>API</strong> + separate
+<strong>worker</strong> process + <strong>WS gateway</strong> (can co-deploy or split); managed <strong>PostgreSQL+PostGIS</strong>, <strong>Redis</strong>, <strong>S3</strong>;
+run <strong>migrations</strong> as a pre-deploy step (gated); <strong>health checks</strong> (<code>/health/live</code>, <code>/health/ready</code>); horizontal
+autoscale on CPU/RPS (API) and queue depth (workers); <strong>rollback</strong> to previous image + backward-safe migrations;
+<strong>zero-downtime</strong> via rolling deploy + expand/contract migrations.</p>
+<p><strong>Independent compatibility:</strong> because integration is the versioned API, frontend and backend deploy on their own
+cadence; the contract&#39;s backward-compatibility policy (Section 19) guarantees a new backend serves the current
+frontend and vice-versa within a major version.</p>
+<hr>
+<h2>22. CI/CD specification</h2>
+<p>Per repo pipeline stages: install → format check → lint → type-check → unit → integration → security scan →
+<strong>contract test</strong> → build → artifact (image/deployment) → deploy (staging) → smoke test → (manual gate) →
+deploy (prod) → smoke. <strong>Branching:</strong> trunk-based with short-lived PR branches; protected <code>main</code>; release tags.
+Backend adds <strong>migration test</strong> + <strong>Testcontainers</strong> integration; frontend adds <strong>Playwright e2e</strong> + <strong>axe</strong>.
+Failing contract tests <strong>block</strong> merge.</p>
+<hr>
+<h2>23. Observability and operations</h2>
+<p>Structured JSON logs (pino) with <strong>correlation/request IDs</strong> propagated FE→API→worker; log levels; <strong>metrics</strong>
+(RPS, latency histograms, error rate, queue depth, escrow-held total, checks/day) via Prometheus/OpenTelemetry;
+<strong>distributed tracing</strong>; <strong>error tracking</strong> (Sentry) FE + BE; uptime + synthetic checks on key journeys; DB &amp;
+Redis &amp; queue dashboards; <strong>audit logs</strong> for privileged/admin/money actions; alert thresholds (error rate &gt; 2%,
+p95 &gt; target, DLQ &gt; 0, escrow reconciliation mismatch, payment webhook failures). <strong>No PII/secrets in logs.</strong></p>
+<hr>
+<h2>24. Performance and scalability</h2>
+<p>Initial ~10k users / 5k listings / 200 checks/day (OQ-11); plan 10× headroom. Targets per NFR-1/2. DB: proper
+indexes (Section 11.3), <strong>GiST</strong> for geometry, read replicas for search, connection pooling; <strong>caching</strong> (Redis)
+for hot reads (featured, regions, provider lists); <strong>CDN</strong> for static + images (via storage/CDN); cursor
+pagination for large lists; <strong>lazy-load</strong> map tiles/parcels by viewport; <strong>code-splitting</strong> per route (Next);
+query optimization (avoid N+1 via Prisma includes/dataloader); <strong>horizontal scaling</strong> stateless API; <strong>worker
+scaling</strong> by queue depth; load-test scenarios: search burst, map-parcel fetch, concurrent plot purchase race,
+conflict-check throughput, checkout+webhook.</p>
+<hr>
+<h2>25. Accessibility and responsive design</h2>
+<p>WCAG <strong>2.1 AA</strong>: full keyboard navigation (incl. map controls have accessible alternatives/list view), visible
+focus, managed focus in dialogs/wizard, screen-reader labels on all controls, associated form labels + inline
+error announcements (<code>aria-live</code>), color contrast ≥ 4.5:1 (chart colors are CVD-validated), and <strong>reduced-motion</strong>
+support (Framer Motion respects <code>prefers-reduced-motion</code>). Breakpoints: mobile ≥ 360px (single-column, bottom
+nav), tablet (two-column), desktop (full map + panels). Map interactions degrade to a <strong>list/table</strong> fallback for
+non-pointer users.</p>
+<hr>
+<h2>26. Testing and QA strategy</h2>
+<table>
+<thead>
+<tr>
+<th>Test type</th>
+<th>Team</th>
+<th>Environment</th>
+<th>Tool</th>
+<th>Trigger</th>
+<th>Coverage goal</th>
+<th>Blocking</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FE unit/component</td>
+<td>FE</td>
+<td>CI</td>
+<td>Vitest+RTL</td>
+<td>PR</td>
+<td>≥80%</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>FE e2e</td>
+<td>FE</td>
+<td>CI/staging</td>
+<td>Playwright</td>
+<td>PR/nightly</td>
+<td>critical journeys</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>FE a11y</td>
+<td>FE</td>
+<td>CI</td>
+<td>axe</td>
+<td>PR</td>
+<td>0 serious</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>BE unit</td>
+<td>BE</td>
+<td>CI</td>
+<td>Jest/Vitest</td>
+<td>PR</td>
+<td>≥85% domain</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>BE repo/geo</td>
+<td>BE</td>
+<td>CI (Testcontainers)</td>
+<td>PG+PostGIS</td>
+<td>PR</td>
+<td>correctness</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>BE API/integration</td>
+<td>BE</td>
+<td>CI</td>
+<td>Supertest</td>
+<td>PR</td>
+<td>all endpoints</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Contract</td>
+<td>both</td>
+<td>CI</td>
+<td>Prism/Dredd</td>
+<td>PR</td>
+<td>all endpoints</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Load</td>
+<td>BE/DevOps</td>
+<td>staging</td>
+<td>k6</td>
+<td>pre-release</td>
+<td>meet NFRs</td>
+<td>non-block (gate)</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Sec</td>
+<td>CI/staging</td>
+<td>ZAP/SCA</td>
+<td>PR/nightly</td>
+<td>0 high</td>
+<td>yes (high)</td>
+</tr>
+<tr>
+<td><strong>Cross-repo E2E</strong></td>
+<td>QA</td>
+<td>staging</td>
+<td>Playwright → real API</td>
+<td>pre-release</td>
+<td>buy, publish, check, order, verify</td>
+<td>yes</td>
+</tr>
+</tbody></table>
+<p>Cross-repo E2E scenarios verify both repos together (e.g., register→list→verify→buy→escrow-release→documents).</p>
+<hr>
+<h2>27. Team responsibility matrix (RACI)</h2>
+<p>R=Responsible, A=Accountable, C=Consulted, I=Informed. Teams: <strong>FE</strong>, <strong>BE</strong>, <strong>DevOps</strong>, <strong>Design</strong>, <strong>QA</strong>,
+<strong>Sec</strong>, <strong>Prod</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>FE</th>
+<th>BE</th>
+<th>DevOps</th>
+<th>Design</th>
+<th>QA</th>
+<th>Sec</th>
+<th>Prod</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Product requirements</td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+<td>A/R</td>
+</tr>
+<tr>
+<td>UX design</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>A/R</td>
+<td>C</td>
+<td>I</td>
+<td>C</td>
+</tr>
+<tr>
+<td>Frontend architecture</td>
+<td>A/R</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Backend architecture</td>
+<td>C</td>
+<td>A/R</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Database schema</td>
+<td>I</td>
+<td>A/R</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>API schema (contract)</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+</tr>
+<tr>
+<td>Authentication</td>
+<td>C</td>
+<td>A/R</td>
+<td>C</td>
+<td>I</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Authorization</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>R</td>
+<td>I</td>
+</tr>
+<tr>
+<td>API client</td>
+<td>A/R</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Mock server</td>
+<td>R</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Deployment</td>
+<td>C</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Monitoring</td>
+<td>C</td>
+<td>R</td>
+<td>A/R</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>C</td>
+<td>R</td>
+<td>C</td>
+<td>I</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+</tr>
+<tr>
+<td>End-to-end testing</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+<td>A/R</td>
+<td>C</td>
+<td>C</td>
+</tr>
+<tr>
+<td>Production incidents</td>
+<td>R</td>
+<td>R</td>
+<td>A/R</td>
+<td>I</td>
+<td>C</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>API changes</td>
+<td>C</td>
+<td>A/R</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>28. Integration workflow</h2>
+<p>Stages with <strong>entry → exit</strong> criteria:</p>
+<ol>
+<li><strong>Requirements approved</strong> — entry: this spec; exit: Prod sign-off.</li>
+<li><strong>API contract drafted</strong> — entry: requirements; exit: OpenAPI in <code>contracts/</code>.</li>
+<li><strong>Both teams review contract</strong> — exit: FE+BE approval recorded.</li>
+<li><strong>Contract committed</strong> (OpenAPI + event + error schemas) — exit: published <code>@realestate/contracts</code>.</li>
+<li><strong>FE builds on mock/Prism</strong> — exit: screens function against mock.</li>
+<li><strong>BE implements contract</strong> — exit: endpoints live in dev.</li>
+<li><strong>Contract tests validate BE</strong> — exit: green in CI.</li>
+<li><strong>FE client regenerated/updated</strong> — exit: FE points at real API.</li>
+<li><strong>Integration testing</strong> — exit: cross-repo E2E green in staging.</li>
+<li><strong>Staging validated</strong> — exit: perf/security gates pass, Prod sign-off.</li>
+<li><strong>Coordinated production release</strong> — exit: smoke green, monitoring nominal.</li>
+</ol>
+<hr>
+<h2>29. Implementation phases (no time estimates)</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Objective</th>
+<th>BE tasks</th>
+<th>FE tasks</th>
+<th>Shared</th>
+<th>Deliverable / acceptance</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>0 Foundation</strong></td>
+<td>repos, contract, infra</td>
+<td>scaffold NestJS, DB+PostGIS, CI, OpenAPI skeleton</td>
+<td>contract package, Prism mock wiring</td>
+<td><code>contracts/</code>, env docs</td>
+<td>mock server + client generate; CI green</td>
+</tr>
+<tr>
+<td><strong>1 Auth</strong></td>
+<td>identity &amp; roles</td>
+<td>register/login/refresh/reset, RBAC, MFA(admin)</td>
+<td>swap session store to real auth</td>
+<td>auth docs</td>
+<td>login works end-to-end; guards enforced</td>
+</tr>
+<tr>
+<td><strong>2 Listings + Geo</strong></td>
+<td>browse &amp; map</td>
+<td>listings CRUD+search, estates/parcels, GeoJSON validate</td>
+<td>point listings/map screens at API</td>
+<td>parcel schema</td>
+<td>map buyable; search filters correct</td>
+</tr>
+<tr>
+<td><strong>3 Purchases + Payments + Escrow</strong></td>
+<td>transact</td>
+<td>reserve, payment intent+webhook, escrow ledger, docs</td>
+<td>checkout + escrow tracker on API</td>
+<td>payment sandbox</td>
+<td>buy flow + escrow release; ledger reconciles</td>
+</tr>
+<tr>
+<td><strong>4 Verification</strong></td>
+<td>trust</td>
+<td>KYC cases + review + badge</td>
+<td>verification screens</td>
+<td>doc storage</td>
+<td>approve flips badge; notifies seller</td>
+</tr>
+<tr>
+<td><strong>5 Messaging + Notifications + Realtime</strong></td>
+<td>engage</td>
+<td>conversations/messages, notifications, WS gateway</td>
+<td>chat + bell on API/WS</td>
+<td>event schemas</td>
+<td>realtime chat; unread accurate</td>
+</tr>
+<tr>
+<td><strong>6 Materials</strong></td>
+<td>build</td>
+<td>catalog, orders, supplier CRUD</td>
+<td>shop/cart/orders on API</td>
+<td>—</td>
+<td>order lifecycle works</td>
+</tr>
+<tr>
+<td><strong>7 Providers + Reviews + Leads</strong></td>
+<td>ecosystem</td>
+<td>directory, reviews, leads, seller stats</td>
+<td>provider + seller dashboards</td>
+<td>—</td>
+<td>reviews recompute; leads flow</td>
+</tr>
+<tr>
+<td><strong>8 Conflict checker</strong></td>
+<td>boundary safety</td>
+<td>PostGIS overlap, paid gate, report email</td>
+<td>checker screens on API</td>
+<td>check schema</td>
+<td>server overlap matches reference; email sends</td>
+</tr>
+<tr>
+<td><strong>9 Admin</strong></td>
+<td>operate</td>
+<td>stats, moderation, users, reports</td>
+<td>admin screens on API</td>
+<td>—</td>
+<td>queue + moderation live</td>
+</tr>
+<tr>
+<td><strong>10 Integration/QA/Deploy/Post-launch</strong></td>
+<td>ship &amp; harden</td>
+<td>contract tests, load, security, runbooks</td>
+<td>e2e, a11y, perf</td>
+<td>release coord</td>
+<td>staging validated; prod launched; monitored</td>
+</tr>
+</tbody></table>
+<p><strong>Suggested order:</strong> 0→1→2→3 unlock the signature journey first; 4–9 layer on; 10 throughout and at the end.</p>
+<p><strong>Risks per phase:</strong> payments/escrow legality (P3), geometry correctness (P2/P8), realtime scaling (P5).</p>
+<hr>
+<h2>30. Product backlog (sample; priorities: Must/Should/Could/Future)</h2>
+<h3>Backend</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Epic</th>
+<th>Item</th>
+<th>Priority</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BE-1</td>
+<td>Auth</td>
+<td>JWT + rotating refresh + RBAC</td>
+<td>Must</td>
+<td>FR-AUTH-1..5 pass</td>
+</tr>
+<tr>
+<td>BE-2</td>
+<td>Geo</td>
+<td>PostGIS parcels + GeoJSON validation</td>
+<td>Must</td>
+<td>FR-GEO-4/5</td>
+</tr>
+<tr>
+<td>BE-3</td>
+<td>Buy</td>
+<td>atomic reserve + escrow ledger</td>
+<td>Must</td>
+<td>BR-1/2, FR-BUY-1..5</td>
+</tr>
+<tr>
+<td>BE-4</td>
+<td>Pay</td>
+<td>provider intent + signed webhook</td>
+<td>Must</td>
+<td>FR-BUY-2, BR-10</td>
+</tr>
+<tr>
+<td>BE-5</td>
+<td>Verify</td>
+<td>case state machine + badge</td>
+<td>Must</td>
+<td>FR-VER-*</td>
+</tr>
+<tr>
+<td>BE-6</td>
+<td>Realtime</td>
+<td>WS gateway + Redis fan-out</td>
+<td>Should</td>
+<td>Section 14 events</td>
+</tr>
+<tr>
+<td>BE-7</td>
+<td>Conflict</td>
+<td>PostGIS overlap + paid gate + email</td>
+<td>Must</td>
+<td>FR-CNF-*</td>
+</tr>
+<tr>
+<td>BE-8</td>
+<td>Materials</td>
+<td>orders + supplier CRUD</td>
+<td>Should</td>
+<td>FR-MAT-*</td>
+</tr>
+<tr>
+<td>BE-9</td>
+<td>Admin</td>
+<td>stats/moderation/reports</td>
+<td>Should</td>
+<td>FR-ADM-*</td>
+</tr>
+<tr>
+<td>BE-10</td>
+<td>Notif</td>
+<td>in-app + email delivery</td>
+<td>Should</td>
+<td>FR-NOTE-*</td>
+</tr>
+</tbody></table>
+<h3>Frontend</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Epic</th>
+<th>Item</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FE-1</td>
+<td>Client</td>
+<td>reimplement <code>src/lib/api/*</code> over generated client</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FE-2</td>
+<td>Auth</td>
+<td>real session + refresh + guards</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FE-3</td>
+<td>Realtime</td>
+<td>WS client + reconcile</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FE-4</td>
+<td>Uploads</td>
+<td>direct-to-S3 signed uploads</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FE-5</td>
+<td>Cleanup</td>
+<td>remove <code>src/lib/mock</code> + RoleSwitcher</td>
+<td>Must</td>
+</tr>
+</tbody></table>
+<h3>Shared / DevOps / QA</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Item</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SH-1</td>
+<td>OpenAPI + contracts package + Prism mock</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>SH-2</td>
+<td>Error-code catalogue + event schemas</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>DO-1</td>
+<td>Infra (PG+PostGIS, Redis, S3, container host)</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>DO-2</td>
+<td>CI/CD both repos + contract gate</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>DO-3</td>
+<td>Observability (logs/metrics/traces/alerts)</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>QA-1</td>
+<td>Cross-repo E2E suite</td>
+<td>Must</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>31. Definition of ready</h2>
+<p>A task is ready when: it has an ID and acceptance criteria; the relevant <strong>contract (endpoint/event/schema)</strong> is
+drafted; roles/authz are specified; validation rules are known; UX/empty/error states are defined (FE) or data
+model/migration is known (BE); dependencies are identified; test approach is agreed.</p>
+<h2>32. Definition of done</h2>
+<p>Implementation complete; code reviewed; unit/integration tests pass; <strong>API contract verified</strong> (contract test
+green); security checks pass (authz, input, secrets); accessibility checked (FE); monitoring/metrics added
+(BE); docs/changelog updated; acceptance criteria confirmed; feature behind flag if partial.</p>
+<hr>
+<h2>33. Risks and mitigations</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Risk</th>
+<th>Prob</th>
+<th>Impact</th>
+<th>Team</th>
+<th>Mitigation</th>
+<th>Contingency</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RK-1</td>
+<td>Escrow/payments legal &amp; regulatory (OQ-2)</td>
+<td>Med</td>
+<td>High</td>
+<td>BE/Prod</td>
+<td>confirm partner/merchant-of-record early; ledger + audit</td>
+<td>sandbox-only until compliant</td>
+<td>Prod</td>
+</tr>
+<tr>
+<td>RK-2</td>
+<td>Conflict checker treated as official title search (OQ-3)</td>
+<td>Med</td>
+<td>High</td>
+<td>BE/Prod</td>
+<td>prominent advisory disclaimer; registry integration path</td>
+<td>disable paid claim</td>
+<td>Prod</td>
+</tr>
+<tr>
+<td>RK-3</td>
+<td>API contract drift between repos</td>
+<td>Med</td>
+<td>Med</td>
+<td>Both</td>
+<td>contract tests block CI; versioned OpenAPI</td>
+<td>freeze + hotfix</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-4</td>
+<td>Auth mismatch (token/refresh/CORS)</td>
+<td>Med</td>
+<td>Med</td>
+<td>BE/FE</td>
+<td>shared auth doc + integration env early</td>
+<td>rollback</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-5</td>
+<td>Env/config mismatch across stages</td>
+<td>Med</td>
+<td>Low</td>
+<td>DevOps</td>
+<td>schema-validated env; per-stage docs</td>
+<td>—</td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>RK-6</td>
+<td>Backend delays block FE</td>
+<td>Med</td>
+<td>Med</td>
+<td>Both</td>
+<td>mock/Prism parallel dev</td>
+<td>ship FE against mock</td>
+<td>Prod</td>
+</tr>
+<tr>
+<td>RK-7</td>
+<td>FE mock data differs from real shapes</td>
+<td>Low</td>
+<td>Med</td>
+<td>Both</td>
+<td>seed from same fixtures; contract tests</td>
+<td>fix adapters</td>
+<td>FE</td>
+</tr>
+<tr>
+<td>RK-8</td>
+<td>Breaking API change ships silently</td>
+<td>Low</td>
+<td>High</td>
+<td>BE</td>
+<td>Section 19 policy + deprecation headers</td>
+<td>major version</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-9</td>
+<td>Realtime scaling/ordering issues</td>
+<td>Med</td>
+<td>Med</td>
+<td>BE</td>
+<td>REST reconcile; dedupe; backpressure</td>
+<td>poll fallback</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-10</td>
+<td>Deployment incompatibility (FE↔BE versions)</td>
+<td>Low</td>
+<td>Med</td>
+<td>DevOps</td>
+<td>backward-safe migrations; version pin</td>
+<td>rollback</td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>RK-11</td>
+<td>Third-party (pay/email) outage</td>
+<td>Med</td>
+<td>Med</td>
+<td>BE</td>
+<td>queue+retry+DLQ; degrade gracefully</td>
+<td>manual reconcile</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-12</td>
+<td>Geometry correctness (overlap false neg/pos)</td>
+<td>Med</td>
+<td>High</td>
+<td>BE</td>
+<td>PostGIS + reference tests vs client algorithm</td>
+<td>flag+manual review</td>
+<td>BE</td>
+</tr>
+<tr>
+<td>RK-13</td>
+<td>PII/document exposure (Act 843)</td>
+<td>Low</td>
+<td>High</td>
+<td>Sec</td>
+<td>signed URLs, encryption, access logs</td>
+<td>breach playbook</td>
+<td>Sec</td>
+</tr>
+<tr>
+<td>RK-14</td>
+<td>Plot double-sale race</td>
+<td>Low</td>
+<td>High</td>
+<td>BE</td>
+<td>atomic reserve + unique constraint</td>
+<td>reconcile+refund</td>
+<td>BE</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>34. Final implementation checklist</h2>
+<ul>
+<li><strong>Product:</strong> journeys signed off; OQ-1..12 answered; disclaimers approved (escrow, conflict check).</li>
+<li><strong>Frontend:</strong> <code>src/lib/api/*</code> reimplemented over generated client; auth/refresh live; uploads via signed URLs;
+mock layer &amp; RoleSwitcher removed; e2e + a11y green.</li>
+<li><strong>Backend:</strong> all endpoints + events implemented; PostGIS geometry + overlap; escrow ledger reconciles; payments
+webhook signed+idempotent; verification badge flow; migrations + seed; ≥85% domain coverage; OpenAPI published.</li>
+<li><strong>DevOps:</strong> infra provisioned; CI/CD both repos with contract gate; secrets in manager; backups + PITR; monitoring+alerts.</li>
+<li><strong>QA:</strong> contract tests green; cross-repo E2E green; load meets NFRs.</li>
+<li><strong>Security:</strong> authz matrix enforced; rate limits; encryption in transit/at rest; dependency scan clean; PII review.</li>
+<li><strong>Integration readiness:</strong> staging validated; changelog current; rollback rehearsed.</li>
+<li><strong>Production launch:</strong> smoke green; escrow reconciliation job running; on-call + runbooks ready.</li>
+</ul>
+<hr>
+<h2>35. Final architecture decisions (ADRs)</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Selected</th>
+<th>Alternatives</th>
+<th>Reason</th>
+<th>Trade-off / consequence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Backend runtime</td>
+<td>NestJS + TypeScript (★OQ-1)</td>
+<td>FastAPI/Python, Go, Next route handlers</td>
+<td>shared TS types with FE; strong module system; ecosystem</td>
+<td>not the fastest raw runtime; team must know TS/Nest</td>
+</tr>
+<tr>
+<td>Data store</td>
+<td>PostgreSQL + <strong>PostGIS</strong></td>
+<td>Mongo, MySQL, separate geo service</td>
+<td>relational integrity + first-class geometry for parcels/overlap</td>
+<td>ops must manage PostGIS; migrations need care</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>Prisma</td>
+<td>TypeORM, Drizzle, raw SQL</td>
+<td>DX, typed queries, migrations</td>
+<td>raw PostGIS via <code>$queryRaw</code> for geo ops</td>
+</tr>
+<tr>
+<td>Contract style</td>
+<td>REST + OpenAPI 3.1</td>
+<td>GraphQL, gRPC</td>
+<td>matches existing <code>src/lib/api</code> function-per-endpoint seam; easy mocking</td>
+<td>over-fetch vs GraphQL; mitigate with field selection where needed</td>
+</tr>
+<tr>
+<td>Realtime</td>
+<td>Self-hosted WebSocket + Redis (★OQ-8)</td>
+<td>Pusher/Ably, SSE, polling-only</td>
+<td>control + cost; Redis already present</td>
+<td>must operate WS scaling; fallback = polling</td>
+</tr>
+<tr>
+<td>Escrow</td>
+<td>Platform ledger, admin-released (★OQ-2)</td>
+<td>Licensed third-party escrow</td>
+<td>ship MVP; auditable double-entry</td>
+<td>regulatory risk — must validate legally before real money</td>
+</tr>
+<tr>
+<td>Parcel truth</td>
+<td>Platform DB, advisory checks (★OQ-3)</td>
+<td>Registry integration</td>
+<td>no registry API dependency at launch</td>
+<td>checks are advisory; add registry later</td>
+</tr>
+<tr>
+<td>Payments</td>
+<td>Provider abstraction, 1 live at launch (★OQ-5)</td>
+<td>Direct MoMo only</td>
+<td>flexibility across MoMo+card</td>
+<td>more integration surface</td>
+</tr>
+<tr>
+<td>Money units</td>
+<td>Integer minor units internally, whole-cedi in API (A6/OQ-12)</td>
+<td>float, decimal-in-API</td>
+<td>no float errors; preserves current contract</td>
+<td>conversion layer at the edge</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>JWT access + rotating refresh; admin MFA (★OQ-4)</td>
+<td>server sessions, OAuth-only</td>
+<td>stateless scale + revocation via refresh family</td>
+<td>refresh-token store + rotation logic</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>End of specification. Starred (★) items depend on the open questions in Section 3 and must be confirmed with the
+product owner before the corresponding module is built. This document is versioned; the API contract (OpenAPI) is
+the binding integration artifact between the two repositories.</em></p>
+</div></body></html>

@@ -1,0 +1,81 @@
+{
+  "brand": {
+    "name": "RealEstate",
+    "tagline": "Land you can trust, on the map."
+  },
+  "nav": {
+    "explore": "Explore",
+    "map": "Map",
+    "landCheck": "Land Check",
+    "materials": "Materials",
+    "services": "Services",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "about": "About",
+    "signIn": "Sign in",
+    "getStarted": "Get started",
+    "listLand": "List your land",
+    "dashboard": "Dashboard",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "hero": {
+    "kicker": "Ghana's trust-first land marketplace",
+    "title": "Buy the exact plot you can see from the sky",
+    "subtitle": "Browse verified land on a live satellite map, select the plots you want, and buy with escrow protection — from Accra to Tamale.",
+    "searchLocation": "Where? e.g. Oyibi, Kumasi…",
+    "searchType": "Land type",
+    "searchBudget": "Max budget (₵)",
+    "searchCta": "Search land",
+    "browseMap": "Browse the map",
+    "statPlots": "Mapped plots",
+    "statVerified": "Verified listings",
+    "statRegions": "Regions covered"
+  },
+  "howItWorks": {
+    "kicker": "How it works",
+    "title": "From search to title deed in three steps",
+    "search": "Search & select",
+    "searchBody": "Find land by region, budget and size — or pick exact plots straight off the satellite map.",
+    "verify": "Verify",
+    "verifyBody": "Every verified listing has its indenture, site plan and surveyor's report checked before it earns the badge.",
+    "buy": "Buy with escrow",
+    "buyBody": "Pay with MoMo or card into escrow. Funds release only when your documents and title are handed over."
+  },
+  "trust": {
+    "kicker": "Why RealEstate",
+    "title": "Built to end land fraud, not just list land",
+    "verifiedTitles": "Verified titles",
+    "verifiedTitlesBody": "Indentures, site plans and surveyor reports reviewed before a listing is badged.",
+    "escrow": "Escrow-protected payments",
+    "escrowBody": "Your money is held until documents transfer and title handover are confirmed.",
+    "monitoring": "Real-time plot monitoring",
+    "monitoringBody": "Watch your plot for encroachment alerts and status changes after you buy.",
+    "rates": "Best market rates",
+    "ratesBody": "Transparent per-plot pricing benchmarked across each region.",
+    "scam": "Scam protection",
+    "scamBody": "Report suspicious listings; our moderation team investigates every flag."
+  },
+  "footer": {
+    "blurb": "The trust-first marketplace for land and property in Ghana. Discover, verify and buy — right on the map.",
+    "marketplace": "Marketplace",
+    "company": "Company",
+    "support": "Support",
+    "legal": "Legal",
+    "rights": "All rights reserved.",
+    "sandbox": "Demo prototype — all data and payments are simulated."
+  },
+  "common": {
+    "viewAll": "View all",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "empty": "Nothing here yet",
+    "perPlot": "per plot",
+    "verified": "Verified",
+    "pending": "Verification pending",
+    "unverified": "Unverified"
+  }
+}

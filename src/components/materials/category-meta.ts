@@ -1,0 +1,35 @@
+import {
+  BrickWall,
+  Construction,
+  DoorOpen,
+  Droplets,
+  Hammer,
+  LayoutGrid,
+  Mountain,
+  Package,
+  PaintRoller,
+  TreePine,
+  Warehouse,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import type { MaterialCategory } from "@/types";
+
+/**
+ * Per-category icon + tile theme for the materials shop. Colors are inline so
+ * product tiles read as a clean, consistent catalog without external images.
+ */
+export const CATEGORY_META: Record<MaterialCategory, { icon: LucideIcon; from: string; to: string; fg: string }> = {
+  cement: { icon: Package, from: "#e7e5e4", to: "#a8a29e", fg: "#44403c" },
+  blocks: { icon: BrickWall, from: "#fde4cf", to: "#e0a06a", fg: "#7c3f16" },
+  roofing: { icon: Warehouse, from: "#dbeafe", to: "#7ea8e0", fg: "#1e3a68" },
+  steel: { icon: Construction, from: "#e2e8f0", to: "#94a3b8", fg: "#334155" },
+  aggregates: { icon: Mountain, from: "#ede9dd", to: "#c2b280", fg: "#5c4d1f" },
+  timber: { icon: TreePine, from: "#dcefe0", to: "#7fb08a", fg: "#2f5d3a" },
+  plumbing: { icon: Droplets, from: "#cff3f6", to: "#6bc3cc", fg: "#155e63" },
+  electrical: { icon: Zap, from: "#fef3c7", to: "#f2c14e", fg: "#7a5610" },
+  paint: { icon: PaintRoller, from: "#f5d9e6", to: "#d98bb0", fg: "#7a2f52" },
+  tools: { icon: Hammer, from: "#e4e7ec", to: "#9aa3af", fg: "#3a4250" },
+  "doors-windows": { icon: DoorOpen, from: "#efe0d0", to: "#c9a878", fg: "#5f4527" },
+  tiles: { icon: LayoutGrid, from: "#d7f0ec", to: "#7cc4b7", fg: "#1f5a50" },
+};
