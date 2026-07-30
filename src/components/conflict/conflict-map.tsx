@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { baseStyle } from "@/components/map/map-style";
+import { baseStyle, keepMapSized } from "@/components/map/map-style";
 import type { ConflictResult, ParcelCollection } from "@/types";
 
 const COLORS = {
@@ -53,8 +53,10 @@ export function ConflictMap({
       "top-right",
     );
     map.on("load", () => setReady(true));
+    const stopResize = keepMapSized(map, containerRef.current);
     mapRef.current = map;
     return () => {
+      stopResize();
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -133,9 +135,11 @@ export function ConflictMap({
   }, [flyTarget?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="overflow-hidden rounded-2xl border">
+    <div className="isolate overflow-hidden rounded-2xl border">
       <div className="relative">
-        <div ref={containerRef} className="h-[26rem] w-full" role="application" aria-label="Land conflict map" />
+        {/* translateZ(0) forces the WebGL canvas onto its own layer — fixes a Safari
+            bug where a map inside an overflow-hidden/rounded box paints blank */}
+        <div ref={containerRef} className="h-[26rem] w-full [transform:translateZ(0)]" role="application" aria-label="Land conflict map" />
         {!boundary && (
           <span className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/90 px-3.5 py-1.5 text-[11px] font-medium shadow-md backdrop-blur-sm">
             Your land appears here once you enter coordinates or upload a file

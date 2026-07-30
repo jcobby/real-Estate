@@ -8,7 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Layers2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { baseStyle, PLOT_COLORS } from "./map-style";
+import { baseStyle, keepMapSized, PLOT_COLORS } from "./map-style";
 import { EstateSwitcher } from "./estate-switcher";
 import { MapFilters, type PlotFilters } from "./map-filters";
 import { MapLegend } from "./map-legend";
@@ -72,8 +72,10 @@ export function MapBrowser() {
       "top-right",
     );
     map.on("load", () => setMapReady(true));
+    const stopResize = keepMapSized(map, containerRef.current);
     mapRef.current = map;
     return () => {
+      stopResize();
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -269,7 +271,7 @@ export function MapBrowser() {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" role="application" aria-label="Satellite map of land plots" />
+      <div ref={containerRef} className="h-full w-full [transform:translateZ(0)]" role="application" aria-label="Satellite map of land plots" />
 
       {/* top-left overlays */}
       <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-6rem)] flex-col gap-2">

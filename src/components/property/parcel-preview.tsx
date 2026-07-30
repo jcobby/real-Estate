@@ -9,7 +9,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Expand, MousePointerClick, ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { baseStyle, PLOT_COLORS } from "@/components/map/map-style";
+import { baseStyle, keepMapSized, PLOT_COLORS } from "@/components/map/map-style";
 import { PLOT_STATUS_LABEL } from "@/components/shared/badges";
 import { getEstates, getParcels } from "@/lib/api";
 import { useSelection } from "@/stores/selection";
@@ -56,8 +56,10 @@ export function ParcelPreview({ estateId }: { estateId: string }) {
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => setReady(true));
+    const stopResize = keepMapSized(map, containerRef.current);
     mapRef.current = map;
     return () => {
+      stopResize();
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -185,7 +187,7 @@ export function ParcelPreview({ estateId }: { estateId: string }) {
   return (
     <div className="overflow-hidden rounded-2xl border">
       <div className="relative">
-        <div ref={containerRef} className="h-96 w-full" role="application" aria-label={`Interactive plot map for ${estate?.name ?? "estate"}`} />
+        <div ref={containerRef} className="h-96 w-full [transform:translateZ(0)]" role="application" aria-label={`Interactive plot map for ${estate?.name ?? "estate"}`} />
         <div className="pointer-events-none absolute top-3 left-3 rounded-full bg-background/90 px-3 py-1.5 text-[11px] font-semibold shadow-md backdrop-blur-sm">
           Tap a green plot to select it
         </div>

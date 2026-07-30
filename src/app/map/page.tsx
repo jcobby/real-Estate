@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function MapPage() {
   return (
-    <main className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden">
+    <main className="relative h-[calc(100vh-4rem)] h-[calc(100dvh-4rem)] w-full overflow-hidden">
       <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading map…</div>}>
         <MapBrowserLoader />
       </Suspense>

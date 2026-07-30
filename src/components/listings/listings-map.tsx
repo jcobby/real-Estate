@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { baseStyle } from "@/components/map/map-style";
+import { baseStyle, keepMapSized } from "@/components/map/map-style";
 import { formatGHS } from "@/lib/format";
 import type { Listing } from "@/types";
 
@@ -23,8 +23,10 @@ export function ListingsMap({ listings, loading }: { listings: Listing[]; loadin
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    const stopResize = keepMapSized(map, containerRef.current);
     mapRef.current = map;
     return () => {
+      stopResize();
       map.remove();
       mapRef.current = null;
     };
@@ -70,7 +72,7 @@ export function ListingsMap({ listings, loading }: { listings: Listing[]; loadin
 
   return (
     <div className="relative overflow-hidden rounded-2xl border">
-      <div ref={containerRef} className="h-135 w-full" role="application" aria-label="Map of search results" />
+      <div ref={containerRef} className="h-135 w-full [transform:translateZ(0)]" role="application" aria-label="Map of search results" />
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
           <p className="rounded-full bg-background px-4 py-2 text-sm font-medium shadow">Updating results…</p>

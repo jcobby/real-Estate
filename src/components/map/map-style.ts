@@ -1,4 +1,4 @@
-import type { StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 
 /**
  * Free raster base layers — satellite (Esri World Imagery) and streets (OSM).
@@ -29,6 +29,30 @@ export function baseStyle(kind: "satellite" | "streets"): StyleSpecification {
             },
     },
     layers: [{ id: "base", type: "raster", source: "base" }],
+  };
+}
+
+/**
+ * Keep the WebGL canvas sized to its container. Safari (and any late-layout
+ * pass) can create the map before the container has its final size, leaving a
+ * 0×0 / blank canvas until the user interacts — a few deferred resizes plus a
+ * ResizeObserver fix it. Returns a cleanup to call on unmount.
+ */
+export function keepMapSized(map: MapLibreMap, container: HTMLElement): () => void {
+  const resize = () => {
+    try {
+      map.resize();
+    } catch {
+      /* map already removed */
+    }
+  };
+  map.once("load", resize);
+  const timers = [60, 250, 800].map((ms) => setTimeout(resize, ms));
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+  ro?.observe(container);
+  return () => {
+    timers.forEach(clearTimeout);
+    ro?.disconnect();
   };
 }
 

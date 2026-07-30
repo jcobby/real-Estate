@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Check, MapPin as MapPinIcon, PenLine, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { baseStyle, PLOT_COLORS } from "@/components/map/map-style";
+import { baseStyle, keepMapSized, PLOT_COLORS } from "@/components/map/map-style";
 import { ringAreaSqm } from "@/lib/geo";
 import { formatSqm } from "@/lib/format";
 import type { ParcelCollection } from "@/types";
@@ -242,8 +242,10 @@ export function LocationPicker({
     if (!readOnly && lat != null && lng != null) {
       markerRef.current = new maplibregl.Marker({ color: "#ffae00" }).setLngLat([lng, lat]).addTo(map);
     }
+    const stopResize = keepMapSized(map, containerRef.current);
     mapRef.current = map;
     return () => {
+      stopResize();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
@@ -360,7 +362,7 @@ export function LocationPicker({
   return (
     <div className="overflow-hidden rounded-2xl border">
       <div className="relative">
-        <div ref={containerRef} className="h-96 w-full" role="application" aria-label="Plot location and parcel preview map" />
+        <div ref={containerRef} className="h-96 w-full [transform:translateZ(0)]" role="application" aria-label="Plot location and parcel preview map" />
 
         {allowDraw && !drawing && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
