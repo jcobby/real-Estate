@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard", "/seller", "/admin", "/settings", "/checkout"],
+      disallow: ["/dashboard", "/seller", "/admin", "/settings", "/checkout", "/materials/checkout"],
     },
-    sitemap: "https://realestate-gh.example.com/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

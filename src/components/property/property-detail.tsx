@@ -105,17 +105,19 @@ export function PropertyDetail({ id }: { id: string }) {
 
   const buy = () => {
     if (listing.estateId) {
-      // scroll to the inline plot map on this page — buyers pick & buy right here
+      // scroll to the inline plot map on this page — buyers pick & buy real plots there
       document.getElementById("plot-map")?.scrollIntoView({ behavior: "smooth", block: "start" });
       toast("Tap the plots you want on the map", { description: "Then press Buy under the map." });
       return;
     }
+    // No mapped plots on this listing — a plot-by-plot escrow purchase can't be
+    // created, so guide the buyer to reserve it with the seller instead.
     if (!session) {
-      toast("Sign in to start a purchase", { description: "Escrow-protected buying needs an account." });
-      router.push("/login");
+      toast("Sign in to reserve this land", { description: "Reserving needs an account." });
+      router.push(`/login?next=/property/${listing.id}`);
       return;
     }
-    router.push(`/checkout?listing=${listing.id}`);
+    setReserveOpen(true);
   };
 
   const reserve = () => {
@@ -295,11 +297,13 @@ export function PropertyDetail({ id }: { id: string }) {
             <div className="grid gap-2">
               <Button size="lg" className="h-11" onClick={buy}>
                 <ShoppingCart data-icon="inline-start" />
-                {listing.estateId ? "Buy — choose plots on map" : "Buy this land"}
+                {listing.estateId ? "Buy — choose plots on map" : "Reserve this land"}
               </Button>
-              <Button variant="outline" size="lg" className="h-11" onClick={() => setReserveOpen(true)}>
-                Reserve for 48h
-              </Button>
+              {listing.estateId && (
+                <Button variant="outline" size="lg" className="h-11" onClick={() => setReserveOpen(true)}>
+                  Reserve for 48h
+                </Button>
+              )}
               <div className="flex gap-2">
                 <FavoriteButton listingId={listing.id} withLabel className="flex-1 justify-center border bg-background py-2.5 shadow-none" />
                 <Button variant="outline" className="flex-1" onClick={share}>

@@ -35,7 +35,7 @@ export function LandCheckPromo() {
 
             <ul className="mt-6 grid gap-3 sm:grid-cols-3">
               {[
-                { icon: MousePointerClick, label: "Draw your boundary" },
+                { icon: MousePointerClick, label: "Enter your boundary" },
                 { icon: ScanSearch, label: "See overlaps instantly" },
                 { icon: ShieldCheck, label: "Free for members" },
               ].map(({ icon: Icon, label }) => (
@@ -48,10 +48,7 @@ export function LandCheckPromo() {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" className="h-12 px-6 text-base" render={<Link href="/land-check" />}>
-                <ShieldCheck data-icon="inline-start" /> Run a free Land Check
-              </Button>
-              <Button size="lg" variant="outline" className="h-12 px-6 text-base" render={<Link href="/land-check?example=1" />}>
-                See a live example <ArrowRight data-icon="inline-end" />
+                <ShieldCheck data-icon="inline-start" /> Run a Land Check <ArrowRight data-icon="inline-end" />
               </Button>
             </div>
           </div>

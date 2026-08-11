@@ -25,12 +25,35 @@ function allRegisteredParcels() {
 }
 
 /**
+ * Buy a one-off guest land-check. Returns a single-use check token to pass to
+ * {@link checkLandConflict}. Signed-in users never call this — their account
+ * covers the check. In mock mode there's nothing to pay, so we return a stub.
+ */
+export async function payForGuestCheck(): Promise<string> {
+  if (LIVE) {
+    const d = payload<{ checkToken?: string; token?: string }>(
+      await http.post("/v1/land-checks/guest-payment", {}),
+    );
+    const token = d.checkToken ?? d.token;
+    if (!token) throw new Error("Payment didn't return a check token — please try again.");
+    return token;
+  }
+  await delay(900);
+  return `mock-${uid("chk")}`;
+}
+
+/**
  * Check a boundary (closed lng/lat ring) against every registered parcel and
  * return the overlapping ones + the overlap geometry. Slivers < 1 m² are ignored.
+ *
+ * `checkToken` is the single-use token from {@link payForGuestCheck} (guests
+ * only). Signed-in users omit it — their bearer token covers the check.
  */
-export async function checkLandConflict(ring: number[][]): Promise<ConflictResult> {
+export async function checkLandConflict(ring: number[][], checkToken?: string): Promise<ConflictResult> {
   if (LIVE) {
-    const d = payload<Record<string, unknown>>(await http.post("/v1/land-checks", { ring }));
+    const body: Record<string, unknown> = { ring };
+    if (checkToken) body.checkToken = checkToken;
+    const d = payload<Record<string, unknown>>(await http.post("/v1/land-checks", body));
     const result = (d.conflicts !== undefined ? d : (d.result ?? d.check ?? d)) as unknown as ConflictResult & { id?: string };
     lastCheckId = (d.id as string) ?? (result as { id?: string }).id ?? lastCheckId;
     return result;

@@ -12,6 +12,7 @@
     "e2e": "playwright test",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "generate:parcels": "node scripts/generate-parcels.mjs",
+    "generate:material-images": "node scripts/generate-material-images.mjs",
     "spec:pdf": "node scripts/build-spec-pdf.mjs",
     "gen:validation": "node scripts/gen-validation.mjs",
     "seed": "node scripts/seed-backend.mjs"

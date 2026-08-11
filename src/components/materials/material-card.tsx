@@ -1,29 +1,46 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import { Check, Minus, Plus, ShoppingCart, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORY_META } from "./category-meta";
+import { CATEGORY_META, materialImageSrc } from "./category-meta";
 import { CATEGORY_LABEL } from "@/data/materials";
 import { useCart } from "@/stores/cart";
 import { formatGHS } from "@/lib/format";
 import type { Material } from "@/types";
 import { cn } from "@/lib/utils";
 
-/** Icon "product shot" tile — a category-themed gradient with the category glyph. */
+/** Product-shot tile — the material's photo (or its category image), brand-tagged. */
 export function MaterialTile({ material, className }: { material: Material; className?: string }) {
   const meta = CATEGORY_META[material.category];
   const Icon = meta.icon;
+  const [broken, setBroken] = useState(false);
+  const src = materialImageSrc(material);
+
   return (
     <div
-      className={cn("relative flex items-center justify-center overflow-hidden", className)}
+      className={cn("relative overflow-hidden", className)}
       style={{ background: `linear-gradient(135deg, ${meta.from}, ${meta.to})` }}
-      aria-hidden
     >
-      <Icon className="size-14 opacity-90" style={{ color: meta.fg }} strokeWidth={1.5} />
-      <span className="absolute right-2 bottom-2 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-neutral-700 backdrop-blur-sm">
+      {broken ? (
+        <span className="flex size-full items-center justify-center">
+          <Icon className="size-14 opacity-90" style={{ color: meta.fg }} strokeWidth={1.5} aria-hidden />
+        </span>
+      ) : (
+        <Image
+          src={src}
+          alt={material.name}
+          fill
+          sizes="(max-width: 640px) 100vw, 320px"
+          className="object-cover"
+          onError={() => setBroken(true)}
+        />
+      )}
+      <span className="absolute right-2 bottom-2 rounded-full bg-white/75 px-2 py-0.5 text-[10px] font-bold text-neutral-700 backdrop-blur-sm">
         {material.brand}
       </span>
     </div>

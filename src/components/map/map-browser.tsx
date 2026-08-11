@@ -41,8 +41,9 @@ export function MapBrowser() {
     queryKey: ["all-parcels"],
     queryFn: async () => {
       const list = await getEstates();
-      const collections = await Promise.all(list.map((e) => getParcels(e.id)));
-      const features = collections.flatMap((c) => c?.features ?? []);
+      // one estate's parcels failing must not blank the whole map — skip it
+      const collections = await Promise.allSettled(list.map((e) => getParcels(e.id)));
+      const features = collections.flatMap((r) => (r.status === "fulfilled" ? (r.value?.features ?? []) : []));
       return { type: "FeatureCollection", features } satisfies ParcelCollection;
     },
   });

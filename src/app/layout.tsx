@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
@@ -11,7 +12,7 @@ const grotesk = Space_Grotesk({ variable: "--font-heading", subsets: ["latin"] }
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://realestate-gh.example.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "RealEstate — Buy verified land in Ghana, right on the map",
     template: "%s · RealEstate",

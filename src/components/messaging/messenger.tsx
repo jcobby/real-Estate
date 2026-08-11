@@ -34,6 +34,7 @@ export function Messenger() {
   const { data: conversations = [], isPending: convsPending } = useQuery({
     queryKey: ["conversations", user.id],
     queryFn: () => getConversations(user.id),
+    refetchInterval: 15_000, // no websockets — poll for new threads
   });
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
@@ -42,6 +43,7 @@ export function Messenger() {
     queryKey: ["messages", activeId],
     queryFn: () => getMessages(activeId!),
     enabled: !!activeId,
+    refetchInterval: 5_000, // poll the open thread for incoming replies
   });
 
   useEffect(() => {

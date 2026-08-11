@@ -5,9 +5,29 @@
  * crash on a null and never render "null"/broken images.
  */
 import type { Listing, ListingAttributes, ParcelCollection, Review, ServiceProvider, User } from "@/types";
+import { API_BASE } from "./http";
 
 export function fallbackAvatar(seed: string): string {
   return `https://i.pravatar.cc/150?u=${encodeURIComponent(seed || "user")}`;
+}
+
+/** Neutral "no photo yet" slate for a listing the backend returned without images.
+ *  Deliberately NOT a stand-in land photo — real photos are served from the backend. */
+export const NO_LISTING_IMAGE = "/listing-placeholder.svg";
+
+/** Backend-hosted uploads must load same-origin — the dev tunnel blocks a direct <img>
+ *  GET (anti-phishing gate) and localhost URLs point at the wrong host — so route them
+ *  through the app's /api/img proxy. Genuine remote/CDN images pass through untouched. */
+export function displayImage(u: string): string {
+  try {
+    const url = new URL(u);
+    const onApiHost = API_BASE ? url.host === new URL(API_BASE).host : false;
+    const isLocalhost = /^(localhost|127\.0\.0\.1)$/i.test(url.hostname);
+    if (onApiHost || isLocalhost) return `/api/img?src=${encodeURIComponent(u)}`;
+  } catch {
+    /* relative path / placeholder — serve as-is */
+  }
+  return u;
 }
 
 export function normalizeAttributes(a?: Partial<ListingAttributes> | null): ListingAttributes {
@@ -30,7 +50,14 @@ export function normalizeListing(l: Listing): Listing {
     ...l,
     address: l.address ?? "",
     description: l.description ?? "",
-    images: Array.isArray(l.images) ? l.images : [],
+    // photos come straight from the backend; only fall back to a neutral placeholder
+    // when the backend genuinely has none, so the gallery never renders an empty src
+    images: (() => {
+      const imgs = (Array.isArray(l.images) ? l.images : [])
+        .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+        .map(displayImage);
+      return imgs.length > 0 ? imgs : [NO_LISTING_IMAGE];
+    })(),
     amenities: Array.isArray(l.amenities) ? l.amenities : [],
     documents: Array.isArray(l.documents) ? l.documents : [],
     salesAgreement: l.salesAgreement ?? "",

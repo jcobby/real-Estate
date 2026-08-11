@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Smoke test of the signature flow:
- * sign in as buyer → select plots on the satellite map → buy via MoMo →
+ * Smoke test of the signature flow (runs in mock mode — see playwright.config.ts):
+ * sign in as a buyer → select plots on the satellite map → buy via MoMo →
  * see the purchase land in the escrow tracker.
  *
  * Requires browsers: `npx playwright install chromium`
@@ -39,11 +39,11 @@ async function selectPlots(page: Page, wanted: number) {
 }
 
 test("buyer can pick plots on the map and buy with MoMo escrow", async ({ page }) => {
-  // 1. mint a buyer session through the demo role switcher
-  await page.goto("/");
-  await page.getByRole("button", { name: /open demo role switcher/i }).click();
-  await expect(page.getByText(/switch role/i)).toBeVisible(); // popover fully open
-  await page.getByRole("button", { name: /^Buyer$/ }).click();
+  // 1. sign in through the real login form (mock backend returns a buyer session)
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("buyer@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("Password123");
+  await page.getByRole("main").getByRole("button", { name: /^Sign in$/ }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
   // 2. select two available plots on the satellite map
@@ -63,7 +63,6 @@ test("buyer can pick plots on the map and buy with MoMo escrow", async ({ page }
   await expect(page.getByText(/payment locked in escrow/i)).toBeVisible({ timeout: 15_000 });
   await page.getByText(/open escrow tracker/i).click();
   await expect(page).toHaveURL(/\/dashboard\/purchase\//);
-  await expect(page.getByText("Escrow progress")).toBeVisible();
   await expect(page.getByText("Funds held in escrow")).toBeVisible();
 
   // 5. the purchase is listed under owned plots

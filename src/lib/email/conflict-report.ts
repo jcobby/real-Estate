@@ -222,8 +222,7 @@ export function buildConflictReportEmail(input: ConflictEmailInput): BuiltEmail 
       <!-- footer -->
       <tr><td style="padding:20px 28px 8px;text-align:center;font:400 12px/1.6 Arial,Helvetica,sans-serif;color:${BRAND.muted};border-radius:0 0 16px 16px;">
         Sent to ${esc(input.recipientEmail)} · RealEstate, 12 Independence Ave, Accra<br/>
-        Questions? Reply to this email or write to <a href="mailto:advisors@realestate.app" style="color:${BRAND.greenSoft};">advisors@realestate.app</a><br/>
-        <span style="color:#9aa79f;">Demo prototype — this report was generated in a sandbox; no real transaction occurred.</span>
+        Questions? Reply to this email or write to <a href="mailto:advisors@realestate.app" style="color:${BRAND.greenSoft};">advisors@realestate.app</a>
       </td></tr>
 
     </table>
@@ -257,7 +256,6 @@ export function buildConflictReportEmail(input: ConflictEmailInput): BuiltEmail 
     ...steps.map((s) => `  - ${s.replace(/<[^>]+>/g, "")}`),
     "",
     "Note: checks RealEstate-registered parcels only — always confirm title at the Lands Commission.",
-    "Demo prototype — generated in a sandbox; no real transaction occurred.",
   ];
 
   return { subject, html, text: textLines.join("\n") };

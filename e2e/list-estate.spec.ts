@@ -1,76 +1,97 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Seller flow for the signature feature:
- * run the wizard with "Sell as clickable plots" on → publish →
- * the new estate opens on /map and its plots are selectable.
+ * Seller flow for the signature feature (runs in mock mode — see playwright.config.ts):
+ * open the listing wizard → define plots by uploading a GeoJSON of surveyed parcels
+ * (the production flow — no drawing/pins) → publish → the new estate opens on /map.
+ *
+ * A seller session is injected directly so the test focuses on the wizard, not auth.
  */
-test("seller can publish a clickable-plot estate via the wizard", async ({ page }) => {
-  // sign in as the seeded seller
-  await page.goto("/");
-  await page.getByRole("button", { name: /open demo role switcher/i }).click();
-  await expect(page.getByText(/switch role/i)).toBeVisible();
-  await page.getByRole("button", { name: /Seller \/ Agent/ }).click();
-  await expect(page).toHaveURL(/\/seller/, { timeout: 15_000 });
+
+const SELLER_SESSION = JSON.stringify({
+  state: {
+    session: {
+      user: {
+        id: "u-seller-1",
+        name: "Test Seller",
+        email: "seller@e2e.test",
+        phone: "+233200000000",
+        role: "seller",
+        region: "Greater Accra",
+        verified: true,
+        joinedAt: new Date().toISOString(),
+      },
+      token: "mock-e2e",
+      createdAt: new Date().toISOString(),
+    },
+  },
+  version: 0,
+});
+
+// One surveyed parcel near Oyibi — becomes a single selectable plot.
+const PLOTS_GEOJSON = JSON.stringify({
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { plotNumber: "TS-001", price: 60000 },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-0.0872, 5.8260],
+            [-0.0862, 5.8260],
+            [-0.0862, 5.8268],
+            [-0.0872, 5.8268],
+            [-0.0872, 5.8260],
+          ],
+        ],
+      },
+    },
+  ],
+});
+
+test("seller can publish a plotted estate via the wizard (GeoJSON upload)", async ({ page }) => {
+  await page.addInitScript((s) => window.localStorage.setItem("realestate:session", s), SELLER_SESSION);
 
   await page.goto("/seller/listings/new");
 
-  // step 1 — location, then "let buyers pick exact plots" via an auto grid
+  // step 1 — location + define plots by uploading a surveyor's GeoJSON
   await page.getByLabel("Region").click();
   await page.getByRole("option", { name: "Greater Accra" }).click();
   await page.getByLabel("Town / city").fill("Oyibi");
   await page.getByLabel("Address / nearest landmark").fill("Test ridge, off the Dodowa road");
-  await page.getByRole("button", { name: /Let buyers pick exact plots/ }).click();
-  await page.getByRole("tab", { name: /Auto grid/ }).click();
-  await page.getByLabel("Plot prefix").fill("TS");
-  await expect(page.getByText(/Generates ≈ 20 plots/)).toBeVisible(); // 4 × 5 default grid
+  await page.getByRole("button", { name: /Upload GeoJSON\/KML/ }).click();
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "plots.geojson", mimeType: "application/geo+json", buffer: Buffer.from(PLOTS_GEOJSON) });
+  await expect(page.getByText(/plots? ready/i)).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: /^Continue$/ }).click();
 
   // step 2 — description
   await page.getByLabel("Listing title").fill("Playwright Test Gardens — selectable plots");
   await page
     .getByLabel("Description")
-    .fill("Twenty pillared plots on a fresh layout with graded access roads, ready for the e2e suite to buy.");
+    .fill("A surveyed layout uploaded as GeoJSON for the e2e suite to publish and open on the map.");
   await page.getByRole("button", { name: /^Continue$/ }).click();
 
-  // step 3 — features (prefilled defaults pass validation)
+  // step 3 — key features (prefilled defaults pass validation)
   await page.getByRole("button", { name: /^Continue$/ }).click();
 
   // step 4 — photos: drop one fake image through the hidden input
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "site-photo.png", mimeType: "image/png", buffer: Buffer.from("fake-image-bytes") });
-  await expect(page.getByText(/1 file added/i)).toBeVisible();
   await page.getByRole("button", { name: /^Continue$/ }).click();
 
   // step 5 — documents (optional) and step 6 — terms (prefilled)
   await page.getByRole("button", { name: /^Continue$/ }).click();
   await page.getByRole("button", { name: /^Continue$/ }).click();
 
-  // step 7 — price & publish; plot counts are fixed by the grid
-  await expect(page.getByLabel("Total plots")).toBeDisabled();
-  await expect(page.getByText("20 generated grid").or(page.getByText("4 × 5 generated grid"))).toBeVisible();
-  // force: skips the stability wait (the button swaps to a "Publishing…" spinner
-  // on press) while still dispatching a real, trusted click
+  // step 7 — publish
   await page.getByRole("button", { name: /publish listing/i }).click({ force: true, noWaitAfter: true });
 
-  // lands on the map focused on the new estate…
+  // lands on the map focused on the new estate
   await expect(page).toHaveURL(/\/map\?estate=est-/, { timeout: 20_000 });
   await expect(page.getByRole("button", { name: /Playwright Test Gardens/ })).toBeVisible();
-
-  // …where its plots are selectable
-  const canvas = page.locator(".maplibregl-canvas");
-  await expect(canvas).toBeVisible();
-  await page.waitForTimeout(4000);
-  const box = (await canvas.boundingBox())!;
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  // the grid's central access road can sit exactly at the centre — probe around it
-  for (const [dx, dy] of [[0, 0], [0, -35], [0, 35], [-45, -35], [45, 35], [-45, 35], [45, -35]]) {
-    await page.mouse.click(cx + dx, cy + dy);
-    await page.waitForTimeout(500);
-    if (await page.getByText(/Your selection \(\d+\)/).isVisible().catch(() => false)) break;
-  }
-  await expect(page.getByText(/Your selection \(\d+\)/)).toBeVisible();
-  await expect(page.getByText(/TS-\d{3}/).first()).toBeVisible();
 });

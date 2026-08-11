@@ -117,10 +117,17 @@ function edgeMeters(a: number[], b: number[]): number {
   return Math.hypot(dx, dy);
 }
 
+/** Upper bound on polygons accepted from one uploaded survey file. Generous
+ *  enough for a real large subdivision (~1,000 plots) while still refusing an
+ *  absurd national dataset that would freeze the browser. */
+export const MAX_PARCEL_FEATURES = 5000;
+
 export interface ParseOptions {
   estateId: string;
   fallbackPrice: number;
   fallbackOwner: string;
+  /** cap on how many polygons to accept from one file (default {@link MAX_PARCEL_FEATURES}). */
+  maxFeatures?: number;
 }
 
 const STATUSES: PlotStatus[] = ["available", "reserved", "sold"];
@@ -206,20 +213,133 @@ function parseKml(text: string, opts: ParseOptions): ParcelFeature[] {
   return out;
 }
 
-/** Parse an uploaded parcel file (.geojson/.json/.kml). KMZ must be unzipped first. */
+/** Inflate raw-DEFLATE bytes with the browser's built-in DecompressionStream. */
+async function inflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("deflate-raw");
+  const writer = ds.writable.getWriter();
+  const done = new Response(ds.readable).arrayBuffer(); // start draining before we write
+  void writer.write(bytes as BufferSource);
+  void writer.close();
+  return new Uint8Array(await done);
+}
+
+/**
+ * Pull the KML document out of a KMZ (which is just a ZIP archive) — entirely in
+ * the browser, no dependency. We read the ZIP's central directory for the first
+ * `.kml` entry (preferring the root doc.kml), then inflate it when it's stored
+ * with DEFLATE. Handles the two compression methods real exporters emit
+ * (0 = stored, 8 = deflate).
+ */
+async function readKmzText(file: File): Promise<string> {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("This browser can't open KMZ files — unzip the .kml inside, or export GeoJSON.");
+  }
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const u16 = (o: number) => view.getUint16(o, true);
+  const u32 = (o: number) => view.getUint32(o, true);
+  const decoder = new TextDecoder("utf-8");
+
+  // find the End-Of-Central-Directory record, scanning back over any trailing comment
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0 && i >= buf.length - 22 - 0xffff; i--) {
+    if (u32(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error("That KMZ file isn't a valid archive — export GeoJSON instead.");
+
+  const count = u16(eocd + 10); // total central-directory records
+  let ptr = u32(eocd + 16); // offset of the first central-directory header
+  let best: { offset: number; method: number; size: number } | null = null;
+  for (let i = 0; i < count && ptr + 46 <= buf.length; i++) {
+    if (u32(ptr) !== 0x02014b50) break;
+    const method = u16(ptr + 10);
+    const compSize = u32(ptr + 20);
+    const nameLen = u16(ptr + 28);
+    const extraLen = u16(ptr + 30);
+    const commentLen = u16(ptr + 32);
+    const localOff = u32(ptr + 42);
+    const name = decoder.decode(buf.subarray(ptr + 46, ptr + 46 + nameLen));
+    if (/\.kml$/i.test(name)) {
+      const isRootDoc = /(^|\/)doc\.kml$/i.test(name);
+      if (!best || isRootDoc) best = { offset: localOff, method, size: compSize };
+      if (isRootDoc) break; // the main document — stop looking
+    }
+    ptr += 46 + nameLen + extraLen + commentLen;
+  }
+  if (!best) throw new Error("No .kml layer found inside that KMZ file.");
+
+  // the LOCAL header repeats the name/extra lengths (they can differ from the central dir)
+  const dataStart = best.offset + 30 + u16(best.offset + 26) + u16(best.offset + 28);
+  const data = buf.subarray(dataStart, dataStart + best.size);
+  const bytes = best.method === 0 ? data : await inflateRaw(data);
+  return decoder.decode(bytes);
+}
+
+/**
+ * Explain WHY a file yielded no parcels. The usual cause isn't a broken file —
+ * it's the wrong *kind* of geometry: a path/road network (lines) or map pins
+ * (points) instead of a closed boundary. Say so, so the fix is obvious.
+ */
+function noPolygonError(text: string): Error {
+  if (/LineString/i.test(text)) {
+    return new Error(
+      "That file has lines (a path or road network), not a closed land boundary. Draw the plot outline as a polygon/area — or type its corner coordinates instead.",
+    );
+  }
+  if (/<Point\b|"Point"/i.test(text)) {
+    return new Error(
+      "That file has map pins (points), not a land boundary. Draw the plot outline as a polygon/area — or type its corner coordinates instead.",
+    );
+  }
+  return new Error("No closed boundary (polygon) found in that file. Draw your plot as an area, or type its corner coordinates.");
+}
+
+/** Parse an uploaded parcel file (.geojson/.json/.kml/.kmz). */
 export async function parseParcelFile(file: File, opts: ParseOptions): Promise<ParcelCollection> {
-  if (/\.kmz$/i.test(file.name)) {
-    throw new Error("KMZ is a zip archive — unzip it and upload the .kml inside (or export GeoJSON).");
-  }
-  const text = await file.text();
-  const features = /\.kml$/i.test(file.name) ? parseKml(text, opts) : parseGeoJson(text, opts);
+  const isKmz = /\.kmz$/i.test(file.name);
+  const isKml = isKmz || /\.kml$/i.test(file.name);
+  const text = isKmz ? await readKmzText(file) : await file.text();
+  const features = isKml ? parseKml(text, opts) : parseGeoJson(text, opts);
   if (features.length === 0) {
-    throw new Error("No parcel polygons found in that file.");
+    throw noPolygonError(text);
   }
-  if (features.length > 400) {
-    throw new Error("That file has more than 400 parcels — split the estate into phases.");
+  const max = opts.maxFeatures ?? MAX_PARCEL_FEATURES;
+  if (features.length > max) {
+    throw new Error(
+      `That file has ${features.length.toLocaleString()} polygons — more than the ${max.toLocaleString()} we can handle at once.`,
+    );
   }
   return { type: "FeatureCollection", features };
+}
+
+/**
+ * Convex hull (Andrew's monotone chain) of a set of lng/lat points → a closed
+ * ring. Used to check a many-polygon boundary as one combined footprint instead
+ * of running a separate check per polygon.
+ */
+export function convexHull(points: number[][]): number[][] {
+  const pts = points
+    .filter((p) => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+    .map((p) => [p[0], p[1]] as Pt);
+  if (pts.length < 3) return pts.length ? [...pts, pts[0]] : [];
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (src: Pt[]): Pt[] => {
+    const out: Pt[] = [];
+    for (const p of src) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
+      out.push(p);
+    }
+    out.pop(); // drop the last point — it's the first of the other half
+    return out;
+  };
+  const lower = half(pts);
+  const upper = half([...pts].reverse());
+  const hull = [...lower, ...upper];
+  return [...hull, hull[0]]; // close the ring
 }
 
 /** Bounding-box centre of a collection — used as the estate's map centre. */
@@ -332,4 +452,54 @@ export function intersectConvex(subjectRing: number[][], clipRing: number[][]): 
   }
   // close the ring for downstream area/render use
   return output.length >= 3 ? [...output, output[0]] : [];
+}
+
+/** Point strictly inside a ring (ray casting). A point ON the boundary counts as outside. */
+function pointInRing(p: Pt, ring: Pt[]): boolean {
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    const cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    if (Math.abs(cross) <= 1e-12 &&
+        Math.min(a[0], b[0]) - 1e-12 <= p[0] && p[0] <= Math.max(a[0], b[0]) + 1e-12 &&
+        Math.min(a[1], b[1]) - 1e-12 <= p[1] && p[1] <= Math.max(a[1], b[1]) + 1e-12) {
+      return false; // on an edge → boundary, not strictly inside
+    }
+  }
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i][1], yj = ring[j][1];
+    if ((yi > p[1]) !== (yj > p[1])) {
+      const xAt = ((ring[j][0] - ring[i][0]) * (p[1] - yi)) / (yj - yi) + ring[i][0];
+      if (p[0] < xAt) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** True only when two segments cross at a point interior to both (not merely touching/collinear). */
+function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
+  const dir = (p: Pt, q: Pt, r: Pt) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  const d1 = dir(a, b, c), d2 = dir(a, b, d), d3 = dir(c, d, a), d4 = dir(c, d, b);
+  return d1 !== 0 && d2 !== 0 && d3 !== 0 && d4 !== 0 && d1 !== d2 && d3 !== d4;
+}
+
+/**
+ * Do two polygons share interior area? Works for ARBITRARY rings — including the
+ * non-convex, irregular parcels real survey files produce — where {@link intersectConvex}
+ * (convex-only) silently misses overlaps. Deliberately does NOT flag plots that merely
+ * share an edge or a corner, so a normal subdivision grid isn't falsely flagged.
+ */
+export function polygonsOverlap(ringA: number[][], ringB: number[][]): boolean {
+  if (!bboxOverlap(ringBBox(ringA), ringBBox(ringB))) return false;
+  const a = openRing(ringA), b = openRing(ringB);
+  if (a.length < 3 || b.length < 3) return false;
+  for (const p of a) if (pointInRing(p, b)) return true;
+  for (const p of b) if (pointInRing(p, a)) return true;
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i], a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      if (segmentsCross(a1, a2, b[j], b[(j + 1) % b.length])) return true;
+    }
+  }
+  return false;
 }

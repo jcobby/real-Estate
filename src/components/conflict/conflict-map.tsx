@@ -13,21 +13,23 @@ const COLORS = {
 };
 
 /**
- * Display-only map for Land Check. The boundary is supplied precisely (typed
- * coordinates or an uploaded GeoJSON/KML) — the map visualises your land, any
- * conflicting registered plot, and the exact overlap.
+ * Display-only map for Land Check. Boundaries are supplied precisely — typed
+ * coordinates or an uploaded GeoJSON/KML (one or many polygons) — and the map
+ * visualises your land, any conflicting registered plot, and the exact overlap.
  */
 export function ConflictMap({
   center,
   allParcels,
-  boundary,
+  boundaries,
   result,
   focusNonce,
   flyTarget,
 }: {
   center: { lat: number; lng: number };
+  /** every registered parcel — used only to draw a conflicting plot when one is found */
   allParcels?: ParcelCollection | null;
-  boundary: number[][] | null;
+  /** every boundary the user has added — each a closed lng/lat ring */
+  boundaries: number[][][];
   result: ConflictResult | null;
   focusNonce: number;
   /** change nonce to fly the map to a searched place / current location */
@@ -67,11 +69,8 @@ export function ConflictMap({
   /* ---- attach sources + layers once ---- */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || map.getSource("context")) return;
+    if (!map || !ready || map.getSource("searcher")) return;
     const empty = { type: "FeatureCollection", features: [] } as GeoJSON.FeatureCollection;
-
-    map.addSource("context", { type: "geojson", data: empty });
-    map.addLayer({ id: "context-line", type: "line", source: "context", paint: { "line-color": "#fff", "line-opacity": 0.45, "line-width": 1 } });
 
     map.addSource("conflict", { type: "geojson", data: empty });
     map.addLayer({ id: "conflict-fill", type: "fill", source: "conflict", paint: { "fill-color": COLORS.conflict, "fill-opacity": 0.15 } });
@@ -86,15 +85,16 @@ export function ConflictMap({
     map.addLayer({ id: "overlap-line", type: "line", source: "overlap", paint: { "line-color": COLORS.overlap, "line-width": 2 } });
   }, [ready]);
 
-  /* ---- render boundary + result ---- */
+  /* ---- render every boundary + result ---- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const poly = (ring: number[][]): GeoJSON.Feature => ({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } });
 
-    (map.getSource("searcher") as maplibregl.GeoJSONSource | undefined)?.setData(
-      boundary ? { type: "FeatureCollection", features: [poly(boundary)] } : { type: "FeatureCollection", features: [] },
-    );
+    (map.getSource("searcher") as maplibregl.GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: boundaries.map((ring) => poly(ring)),
+    });
 
     const conflictFeatures = (result?.conflicts ?? []).flatMap((c) => {
       const pf = allParcels?.features.find((f) => f.properties.id === c.parcelId);
@@ -104,27 +104,24 @@ export function ConflictMap({
 
     const overlapFeatures = (result?.conflicts ?? []).flatMap((c) => c.overlapRings.map((r) => poly(r)));
     (map.getSource("overlap") as maplibregl.GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: overlapFeatures });
-  }, [boundary, result, allParcels, ready]);
+  }, [boundaries, result, allParcels, ready]);
 
-  /* ---- context (registered parcels for orientation) ---- */
+  /* ---- fit to every boundary when the set changes ---- */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !allParcels) return;
-    (map.getSource("context") as maplibregl.GeoJSONSource | undefined)?.setData(allParcels);
-  }, [allParcels, ready]);
-
-  /* ---- fly to boundary when set ---- */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !boundary || boundary.length < 3) return;
+    if (!map || boundaries.length === 0) return;
     let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-    for (const [x, y] of boundary) {
-      if (x < minLng) minLng = x;
-      if (x > maxLng) maxLng = x;
-      if (y < minLat) minLat = y;
-      if (y > maxLat) maxLat = y;
+    for (const ring of boundaries) {
+      for (const [x, y] of ring) {
+        if (x < minLng) minLng = x;
+        if (x > maxLng) maxLng = x;
+        if (y < minLat) minLat = y;
+        if (y > maxLat) maxLat = y;
+      }
     }
-    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 90, maxZoom: 18, duration: 900 });
+    if (Number.isFinite(minLng)) {
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 90, maxZoom: 18, duration: 900 });
+    }
   }, [focusNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- fly to a searched place / current location ---- */
@@ -140,7 +137,7 @@ export function ConflictMap({
         {/* translateZ(0) forces the WebGL canvas onto its own layer — fixes a Safari
             bug where a map inside an overflow-hidden/rounded box paints blank */}
         <div ref={containerRef} className="h-[26rem] w-full [transform:translateZ(0)]" role="application" aria-label="Land conflict map" />
-        {!boundary && (
+        {boundaries.length === 0 && (
           <span className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/90 px-3.5 py-1.5 text-[11px] font-medium shadow-md backdrop-blur-sm">
             Your land appears here once you enter coordinates or upload a file
           </span>

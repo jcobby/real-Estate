@@ -44,6 +44,8 @@ export function LocationPicker({
   readOnly = false,
   drawnCount = 0,
   focusTarget,
+  focusBounds,
+  flaggedPlotNumbers,
   onChange,
   onDrawParcel,
 }: {
@@ -57,6 +59,10 @@ export function LocationPicker({
   drawnCount?: number;
   /** change nonce to fly the map to a place (search / use-my-location) */
   focusTarget?: { lat: number; lng: number; zoom?: number; nonce: number } | null;
+  /** change nonce to fit the map to a bbox [minLng, minLat, maxLng, maxLat] — e.g. a plot pair */
+  focusBounds?: { bbox: [number, number, number, number]; nonce: number } | null;
+  /** plot numbers to outline in red (e.g. overlapping plots the seller must fix) */
+  flaggedPlotNumbers?: string[];
   onChange: (coords: { lat: number; lng: number }) => void;
   onDrawParcel?: (ring: LngLat[]) => void;
 }) {
@@ -64,6 +70,7 @@ export function LocationPicker({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const lastParcelCountRef = useRef(0);
+  const flaggedRef = useRef<string[]>([]);
 
   const [drawing, setDrawing] = useState(false);
   // vertices live in state for rendering; the ref mirror feeds the map's stable event handlers
@@ -271,6 +278,14 @@ export function LocationPicker({
     map.flyTo({ center: [focusTarget.lng, focusTarget.lat], zoom: focusTarget.zoom ?? 16, duration: 1400 });
   }, [focusTarget?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* fit tightly to a bbox — e.g. zoom to show both plots of an overlapping pair */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusBounds) return;
+    const [minLng, minLat, maxLng, maxLat] = focusBounds.bbox;
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 90, maxZoom: 20, duration: 900 });
+  }, [focusBounds?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Attach (once) then update the parcel-preview layers. */
   const applyParcels = useCallback((map: maplibregl.Map, fc: ParcelCollection) => {
     const existing = map.getSource(SRC) as maplibregl.GeoJSONSource | undefined;
@@ -302,6 +317,10 @@ export function LocationPicker({
       source: SRC,
       paint: { "line-color": "#ffffff", "line-width": 1.5, "line-opacity": 0.9 },
     });
+    // flagged (overlapping) plots — painted red on top of the base fill/line, below labels
+    const NONE = ["==", ["get", "plotNumber"], " "] as unknown as maplibregl.FilterSpecification;
+    map.addLayer({ id: `${SRC}-flag-fill`, type: "fill", source: SRC, filter: NONE, paint: { "fill-color": "#ef4444", "fill-opacity": 0.55 } });
+    map.addLayer({ id: `${SRC}-flag-line`, type: "line", source: SRC, filter: NONE, paint: { "line-color": "#ef4444", "line-width": 2.5 } });
     map.addLayer({
       id: `${SRC}-labels`,
       type: "symbol",
@@ -349,6 +368,30 @@ export function LocationPicker({
     if (map.isStyleLoaded()) apply();
     else map.once("idle", apply);
   }, [parcels, applyParcels]);
+
+  /* paint the flagged (overlapping) plots red so the seller sees exactly where to fix */
+  const flagKey = (flaggedPlotNumbers ?? []).join("|");
+  useEffect(() => {
+    flaggedRef.current = flaggedPlotNumbers ?? [];
+    const map = mapRef.current;
+    if (!map) return;
+    const setFlag = () => {
+      // the flag layers are attached alongside the parcels — retry on the next idle
+      // if they aren't there yet, and always read the latest ids from the ref
+      if (!map.getLayer(`${SRC}-flag-fill`)) {
+        map.once("idle", setFlag);
+        return;
+      }
+      const ids = flaggedRef.current;
+      const filter = (ids.length
+        ? ["in", ["get", "plotNumber"], ["literal", ids]]
+        : ["==", ["get", "plotNumber"], " "]) as unknown as maplibregl.FilterSpecification;
+      map.setFilter(`${SRC}-flag-fill`, filter);
+      map.setFilter(`${SRC}-flag-line`, filter);
+    };
+    setFlag();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flagKey]);
 
   /* live area readout while tracing */
   const liveArea =

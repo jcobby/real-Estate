@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Role, Session } from "@/types";
+import { setAuthToken } from "@/lib/api/http";
 
 interface SessionState {
   session: Session | null;
@@ -18,9 +19,16 @@ export const useSession = create<SessionState>()(
     (set) => ({
       session: null,
       hydrated: false,
-      setSession: (session) => set({ session }),
+      setSession: (session) => {
+        // keep the http client's in-memory token in sync with the store
+        setAuthToken(session?.token ?? null);
+        set({ session });
+      },
       setHydrated: () => set({ hydrated: true }),
-      signOut: () => set({ session: null }),
+      signOut: () => {
+        setAuthToken(null); // drop the bearer immediately, don't wait for a reload
+        set({ session: null });
+      },
     }),
     {
       name: "realestate:session",

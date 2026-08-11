@@ -16,12 +16,12 @@ import {
   FileUp,
   Keyboard,
   LoaderCircle,
-  LocateFixed,
-  MapPin,
   Save,
-  Search,
+  ShieldCheck,
   Trash2,
+  TriangleAlert,
   UploadCloud,
+  ZoomIn,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,12 +48,11 @@ import {
 } from "@/components/ui/select";
 import { Dropzone } from "@/components/shared/dropzone";
 import { CoordinatePolygonInput } from "@/components/shared/coordinate-polygon-input";
-import { GHANA_PLACES, searchPlaces, type GhanaPlace } from "@/data/ghana-places";
-import { createEstate, createListing, getParcels, updateListing } from "@/lib/api";
+import { createEstate, createListing, deleteListing, getEstates, getParcels, updateListing } from "@/lib/api";
 import { applyApiError } from "@/lib/api/form-errors";
-import { describeError } from "@/lib/api/http";
+import { ApiError, describeError } from "@/lib/api/http";
 import { uploadFile } from "@/lib/api/uploads";
-import { collectionCenter, generateParcelGrid, parcelFromRing, parseParcelFile } from "@/lib/geo";
+import { bboxOverlap, collectionCenter, parcelFromRing, parseParcelFile, polygonsOverlap, ringBBox } from "@/lib/geo";
 import { formatSqm } from "@/lib/format";
 import { useSession } from "@/stores/session";
 import type { Listing, ParcelCollection } from "@/types";
@@ -69,9 +68,25 @@ const LocationPicker = dynamic(() => import("./location-picker").then((m) => m.L
 
 const REGIONS = ["Greater Accra", "Ashanti", "Eastern", "Northern", "Central", "Volta", "Western", "Upper West"];
 
-/** Self-hosted land photos used as stand-ins for a seller's "uploaded" images. */
-const LAND_STOCK = Array.from({ length: 9 }, (_, i) => `/lands/land-${String(i + 1).padStart(2, "0")}.jpg`);
-const stockPhoto = (i: number) => LAND_STOCK[((i % LAND_STOCK.length) + LAND_STOCK.length) % LAND_STOCK.length];
+/** A single listing's estate accepts at most this many plots (backend createEstate cap). */
+const MAX_ESTATE_PLOTS = 500;
+/** The backend rejects any plot under this area — filter tiny survey slivers/artifacts. */
+const MIN_PARCEL_AREA_SQM = 10;
+
+/**
+ * Convert a form image back to a storable absolute URL. The backend requires
+ * z.string().url(), but normalizeListing gives editing forms display URLs — our
+ * /api/img proxy path or the "no photo" placeholder — which aren't valid URLs.
+ * Unwrap the proxy and drop any non-absolute value so it never reaches the API.
+ */
+function toStorableImage(u: string): string | null {
+  if (u.startsWith("/api/img?")) {
+    const src = new URLSearchParams(u.slice(u.indexOf("?") + 1)).get("src");
+    return src && /^https?:\/\//i.test(src) ? src : null;
+  }
+  return /^https?:\/\//i.test(u) ? u : null;
+}
+
 const AMENITIES = [
   "Electricity on site",
   "Piped water",
@@ -140,6 +155,21 @@ const STEPS = [
   { title: "Terms", fields: ["salesAgreement", "terms", "negotiable"] },
   { title: "Price & publish", fields: ["price", "plotsTotal", "plotsAvailable"] },
 ] as const;
+
+/** All real form fields (flat) — the backend errors we can actually pin to an input. */
+const STEP_FIELDS: readonly string[] = STEPS.flatMap((s) => [...s.fields]);
+
+/** Turn a plot-map/estate failure into plain language for the seller. */
+function describeEstateError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.code === "INVALID_POLYGON") {
+      return "Some of your plots overlap each other or aren't valid shapes. Fix the overlapping plots and re-upload your survey file on step 1.";
+    }
+    const fieldMsg = err.fieldErrors ? Object.values(err.fieldErrors).find(Boolean) : undefined;
+    return fieldMsg || err.message || "Please check your plots and try again.";
+  }
+  return describeError(err);
+}
 
 const DRAFT_KEY = "realestate:wizard-draft";
 
@@ -234,6 +264,7 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const publishingRef = useRef(false);
+  const stepperRef = useRef<HTMLOListElement>(null);
   /** parcels drawn on the map or parsed from an upload — replaces the generated grid */
   const [fileParcels, setFileParcels] = useState<ParcelCollection | null>(null);
   const editing = !!listing;
@@ -242,48 +273,15 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
 
   /* step-1 map helpers: fly-to a place, plot-creation method */
   const [focusTarget, setFocusTarget] = useState<{ lat: number; lng: number; zoom?: number; nonce: number } | null>(null);
+  const [focusBounds, setFocusBounds] = useState<{ bbox: [number, number, number, number]; nonce: number } | null>(null);
   const [plotMethod, setPlotMethod] = useState<"coordinates" | "upload">("coordinates");
   const [coordOpen, setCoordOpen] = useState(false);
-  const [placeQuery, setPlaceQuery] = useState("");
-  const [placeOpen, setPlaceOpen] = useState(false);
-  const [locating, setLocating] = useState(false);
   const flyNonce = useRef(0);
+  const boundsNonce = useRef(0);
 
   const flyTo = (lat: number, lng: number, zoom = 16) => {
     flyNonce.current += 1;
     setFocusTarget({ lat, lng, zoom, nonce: flyNonce.current });
-  };
-
-  const pickPlace = (place: GhanaPlace) => {
-    setValue("lat", place.lat, { shouldValidate: true });
-    setValue("lng", place.lng, { shouldValidate: true });
-    if (!watch("region")) setValue("region", place.region, { shouldValidate: true });
-    if (!watch("city")) setValue("city", place.name, { shouldValidate: true });
-    flyTo(place.lat, place.lng, 15);
-    setPlaceQuery(place.name);
-    setPlaceOpen(false);
-  };
-
-  const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Your browser can't share your location");
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        setValue("lat", +pos.coords.latitude.toFixed(6), { shouldValidate: true });
-        setValue("lng", +pos.coords.longitude.toFixed(6), { shouldValidate: true });
-        flyTo(pos.coords.latitude, pos.coords.longitude, 17);
-        toast.success("Jumped to your location", { description: "Now fine-tune the pin or draw your plot." });
-      },
-      () => {
-        setLocating(false);
-        toast.error("Couldn't get your location", { description: "Allow location access, or search your town instead." });
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
   };
 
   /** Switch how plots are created (type coordinates or upload a survey file). */
@@ -355,6 +353,100 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
     return fileParcels;
   }, [listing?.estateId, existingParcels, fileParcels]);
 
+  /* every already-registered plot on the platform — to warn the seller if theirs overlap
+     one (the same double-sale check buyers run in Land Check). Only needed while the
+     seller is adding a new plot map. */
+  const { data: registeredParcels } = useQuery({
+    queryKey: ["all-parcels"],
+    queryFn: async () => {
+      const estates = await getEstates();
+      const collections = await Promise.allSettled(estates.map((e) => getParcels(e.id)));
+      const features = collections.flatMap((r) => (r.status === "fulfilled" ? (r.value?.features ?? []) : []));
+      return { type: "FeatureCollection", features } as ParcelCollection;
+    },
+    enabled: canConfigurePlots,
+  });
+
+  /* pre-index registered plots (ring + bbox) once, so overlap checks stay cheap */
+  const registeredIndex = useMemo(
+    () =>
+      (registeredParcels?.features ?? []).map((f) => ({
+        ring: f.geometry.coordinates[0],
+        bbox: ringBBox(f.geometry.coordinates[0]),
+        plotNumber: f.properties.plotNumber,
+        owner: f.properties.owner,
+      })),
+    [registeredParcels],
+  );
+
+  /* the seller's plots that overlap an already-registered plot (double-sale risk) */
+  const overlaps = useMemo(() => {
+    if (!fileParcels?.features.length || registeredIndex.length === 0) return [];
+    const out: Array<{ plotNumber: string; against: string; owner: string }> = [];
+    for (const mine of fileParcels.features) {
+      const ring = mine.geometry.coordinates[0];
+      const bbox = ringBBox(ring);
+      for (const reg of registeredIndex) {
+        if (!bboxOverlap(bbox, reg.bbox)) continue;
+        if (polygonsOverlap(ring, reg.ring)) {
+          out.push({ plotNumber: mine.properties.plotNumber, against: reg.plotNumber, owner: reg.owner });
+        }
+      }
+    }
+    return out;
+  }, [fileParcels, registeredIndex]);
+
+  /* the seller's own plots that overlap EACH OTHER — the backend rejects these
+     (INVALID_POLYGON), so they must be fixed before publishing */
+  const selfOverlaps = useMemo(() => {
+    const feats = fileParcels?.features ?? [];
+    if (feats.length < 2) return [];
+    const idx = feats.map((f) => ({ ring: f.geometry.coordinates[0], bbox: ringBBox(f.geometry.coordinates[0]), plotNumber: f.properties.plotNumber }));
+    const out: Array<{ a: string; b: string }> = [];
+    for (let i = 0; i < idx.length; i++) {
+      for (let j = i + 1; j < idx.length; j++) {
+        if (!bboxOverlap(idx[i].bbox, idx[j].bbox)) continue;
+        if (polygonsOverlap(idx[i].ring, idx[j].ring)) out.push({ a: idx[i].plotNumber, b: idx[j].plotNumber });
+      }
+    }
+    return out;
+  }, [fileParcels]);
+
+  /* every one of the seller's plots involved in an overlap — outlined red on the map */
+  const flaggedPlotNumbers = useMemo(() => {
+    const s = new Set<string>();
+    for (const o of selfOverlaps) {
+      s.add(o.a);
+      s.add(o.b);
+    }
+    for (const o of overlaps) s.add(o.plotNumber);
+    return [...s];
+  }, [selfOverlaps, overlaps]);
+
+  /** Fit the map tightly to one or more plots (by number) — clicking an overlap zooms to it. */
+  const zoomToPlots = (...plotNumbers: string[]) => {
+    const feats = (fileParcels?.features ?? []).filter((f) => plotNumbers.includes(f.properties.plotNumber));
+    if (feats.length === 0) return;
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    for (const f of feats) {
+      for (const [x, y] of f.geometry.coordinates[0]) {
+        if (x < minLng) minLng = x;
+        if (x > maxLng) maxLng = x;
+        if (y < minLat) minLat = y;
+        if (y > maxLat) maxLat = y;
+      }
+    }
+    boundsNonce.current += 1;
+    setFocusBounds({ bbox: [minLng, minLat, maxLng, maxLat], nonce: boundsNonce.current });
+  };
+
+  /* keep the active step's tab in view — the last tab (Price) can scroll off-screen */
+  useEffect(() => {
+    stepperRef.current
+      ?.querySelector('[aria-current="step"]')
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [step]);
+
   /** "Draw plot" on the map traced a boundary — add it as a custom parcel. */
   const addDrawnParcel = (ring: number[][]) => {
     const idx = fileParcels?.features.length ?? 0;
@@ -364,6 +456,10 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
       fallbackOwner: user.company ?? user.name,
       plotNumber: `${(values.plotPrefix || "PL").toUpperCase()}-${String(idx + 1).padStart(3, "0")}`,
     });
+    if (feature.properties.areaSqm < MIN_PARCEL_AREA_SQM) {
+      toast.error("That plot is too small", { description: `A plot must be at least ${MIN_PARCEL_AREA_SQM} m² — widen the boundary.` });
+      return;
+    }
     const nextFeatures = [...(fileParcels?.features ?? []), feature];
     setFileParcels({ type: "FeatureCollection", features: nextFeatures });
     setValue("sellAsPlots", true);
@@ -414,7 +510,9 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
   const next = async () => {
     const ok = await trigger(STEPS[step].fields as unknown as (keyof WizardValues)[]);
     if (!ok) return;
-    if (step === 0 && !plotsReady) {
+    // New listings must define at least one plot; editing an existing listing
+    // (whether or not it already has a plot map) never blocks here.
+    if (step === 0 && !editing && !plotsReady) {
       toast.error("Add at least one plot", {
         description: "Enter a plot's coordinates or upload a GeoJSON/KML survey file.",
       });
@@ -436,7 +534,7 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
     sizeAcres: +(v.plotsTotal * 0.16).toFixed(2),
     plotsTotal: v.plotsTotal,
     plotsAvailable: Math.min(v.plotsAvailable, v.plotsTotal),
-    images: v.images,
+    images: v.images.map(toStorableImage).filter((u): u is string => !!u),
     description: v.description,
     amenities: v.amenities,
     verification: listing?.verification ?? ("unverified" as const),
@@ -470,66 +568,101 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
   const publish = async (v: WizardValues) => {
     // hard re-entry guard — double submit events must never create two listings
     if (publishingRef.current) return;
+    // the backend accepts at most MAX_ESTATE_PLOTS plots per estate — stop here with
+    // a clear message rather than letting publish fail with a raw validation error
+    if (canConfigurePlots && fileParcels && fileParcels.features.length > MAX_ESTATE_PLOTS) {
+      toast.error("Too many plots for one listing", {
+        description: `A listing can hold up to ${MAX_ESTATE_PLOTS} plots — yours has ${fileParcels.features.length.toLocaleString()}. Split it into phases (separate listings), or trim it to ${MAX_ESTATE_PLOTS}.`,
+      });
+      setStep(0);
+      return;
+    }
+    // the backend rejects sub-10m² plots — catch any that slipped in before re-upload
+    const tinyPlots =
+      canConfigurePlots && fileParcels
+        ? fileParcels.features.filter((f) => f.properties.areaSqm < MIN_PARCEL_AREA_SQM).length
+        : 0;
+    if (tinyPlots > 0) {
+      toast.error("Some plots are too small", {
+        description: `${tinyPlots} plot${tinyPlots > 1 ? "s are" : " is"} under ${MIN_PARCEL_AREA_SQM} m². Re-upload your survey file on step 1 — tiny slivers are dropped automatically.`,
+      });
+      setStep(0);
+      return;
+    }
+    // the backend rejects a plot map whose plots overlap each other — catch it here
+    // with a clear message instead of a raw INVALID_POLYGON error
+    if (canConfigurePlots && selfOverlaps.length > 0) {
+      toast.error("Your plots overlap each other", {
+        description: `${selfOverlaps.length} pair${selfOverlaps.length > 1 ? "s" : ""} of your plots sit on the same land (e.g. ${selfOverlaps[0].a} & ${selfOverlaps[0].b}). Fix the overlaps in your survey file and re-upload on step 1.`,
+      });
+      setStep(0);
+      return;
+    }
     publishingRef.current = true;
     setPublishing(true);
     try {
-      // a new plot map can be created on publish OR when editing a listing without one
-      const wantsParcels = canConfigurePlots && (v.sellAsPlots || !!fileParcels);
+      // a plot map is created only when the seller actually added plots (drawn or
+      // uploaded) — for a new listing OR when editing a listing that has none yet
+      const wantsParcels = canConfigurePlots && !!fileParcels;
       let estateId = wantsParcels ? `est-${Date.now().toString(36)}` : listing?.estateId;
 
       let listingId: string;
       if (editing) {
-        await updateListing(listing.id, { ...toPayload(v, listing.status), estateId });
+        // Never send a brand-new estate id here — it doesn't exist yet, and the backend
+        // rejects the reference ("You don't have access to this"). A new plot map is
+        // created below and linked back once it's real; keep an already-existing estate.
+        await updateListing(listing.id, { ...toPayload(v, listing.status), estateId: wantsParcels ? undefined : estateId });
         listingId = listing.id;
       } else {
-        const created = await createListing({ ...toPayload(v, "active"), estateId });
+        const created = await createListing(toPayload(v, "active"));
         listingId = created.id;
       }
 
-      if (wantsParcels && estateId) {
+      if (wantsParcels && estateId && fileParcels) {
         const eid = estateId; // narrowed to string for use inside the map closure below
-        const owner = user.company ?? user.name;
-        const price = Math.round(v.price);
-        // re-key uploaded parcels to the real estate id; otherwise generate the grid
-        const parcels: ParcelCollection = fileParcels
-          ? {
-              type: "FeatureCollection",
-              features: fileParcels.features.map((f, i) => ({
-                ...f,
-                properties: {
-                  ...f.properties,
-                  id: `${eid}-${String(i + 1).padStart(3, "0")}`,
-                  estateId: eid,
-                },
-              })),
-            }
-          : generateParcelGrid({
-              estateId,
-              center: { lat: v.lat, lng: v.lng },
-              rows: v.gridRows,
-              cols: v.gridCols,
-              rotationDeg: v.gridRotation,
-              prefix: v.plotPrefix.toUpperCase(),
-              price,
-              owner,
-            });
-        const center = fileParcels ? collectionCenter(parcels) : { lat: v.lat, lng: v.lng };
-        const estate = await createEstate(
-          {
-            id: estateId,
-            name: v.title,
-            region: v.region,
-            city: v.city,
-            center,
-            zoom: 16,
-            listingId,
-            description: v.description.slice(0, 180),
-          },
-          parcels,
-        );
-        estateId = estate.id; // the backend assigns the real id — use it for the redirect
-        queryClient.invalidateQueries({ queryKey: ["estates"] });
-        queryClient.invalidateQueries({ queryKey: ["all-parcels"] });
+        // re-key the drawn/uploaded parcels to the real estate id
+        const parcels: ParcelCollection = {
+          type: "FeatureCollection",
+          features: fileParcels.features.map((f, i) => ({
+            ...f,
+            properties: {
+              ...f.properties,
+              id: `${eid}-${String(i + 1).padStart(3, "0")}`,
+              estateId: eid,
+            },
+          })),
+        };
+        const center = collectionCenter(parcels);
+        try {
+          const estate = await createEstate(
+            {
+              id: estateId,
+              name: v.title,
+              region: v.region,
+              city: v.city,
+              center,
+              zoom: 16,
+              listingId,
+              description: v.description.slice(0, 180),
+            },
+            parcels,
+          );
+          estateId = estate.id; // the backend assigns the real id — use it for the redirect
+          // link the now-real estate onto the listing (safe: the user owns what they just created)
+          await updateListing(listingId, { estateId }).catch(() => {});
+          queryClient.invalidateQueries({ queryKey: ["estates"] });
+          queryClient.invalidateQueries({ queryKey: ["all-parcels"] });
+        } catch (estateErr) {
+          // Publishing must be all-or-nothing: a listing without its plot map is worse
+          // than no listing. Roll back the just-created listing so nothing half-published
+          // survives. (Editing keeps the existing listing — its plots simply weren't added.)
+          if (!editing) await deleteListing(listingId).catch(() => {});
+          // Parcel errors don't map to any form field — explain them plainly and send the
+          // seller back to the map step instead of showing a raw INVALID_POLYGON message.
+          toast.error("Your plot map couldn't be saved", { description: describeEstateError(estateErr) });
+          setStep(0);
+          return;
+        }
       }
 
       if (!editing) localStorage.removeItem(DRAFT_KEY);
@@ -544,7 +677,13 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
         wantsParcels ? `/map?estate=${estateId}` : editing ? "/seller/listings" : `/property/${listingId}`,
       );
     } catch (e) {
-      applyApiError(e, setError, { fallback: editing ? "Couldn't update the listing" : "Couldn't publish the listing" });
+      const mapped = applyApiError(e, setError, {
+        fields: STEP_FIELDS,
+        fallback: editing ? "Couldn't update the listing" : "Couldn't publish the listing",
+      });
+      // jump to the earliest step that holds a flagged field, so the fix is on screen
+      const target = STEPS.findIndex((s) => s.fields.some((f) => mapped.includes(f)));
+      if (target >= 0) setStep(target);
     } finally {
       publishingRef.current = false;
       setPublishing(false);
@@ -558,7 +697,7 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
       return;
     }
     try {
-      await createListing(toPayload({ ...defaults(), ...v, images: v.images.length ? v.images : [stockPhoto(0)] }, "draft"));
+      await createListing(toPayload({ ...defaults(), ...v }, "draft"));
       localStorage.removeItem(DRAFT_KEY);
       toast.success("Draft saved to your listings");
       router.push("/seller/listings");
@@ -614,7 +753,7 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
     <div className="mx-auto max-w-4xl">
       <div>
         {/* stepper */}
-        <ol className="no-scrollbar mb-8 flex gap-2 overflow-x-auto" aria-label="Wizard progress">
+        <ol ref={stepperRef} className="no-scrollbar mb-8 flex gap-2 overflow-x-auto" aria-label="Wizard progress">
           {STEPS.map((s, i) => (
             <li key={s.title} className="shrink-0">
               <button
@@ -660,7 +799,7 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
               <div className="space-y-8">
                 {/* ── A · WHERE IS YOUR LAND ───────────────────────────── */}
                 <section className="space-y-4">
-                  <SectionHead n={1} title="Where is your land?" hint="Choose the region and town, then find the exact spot on the map." />
+                  <SectionHead n={1} title="Where is your land?" hint="Choose the region and town — the exact spot comes from the plots you add below." />
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
@@ -694,53 +833,6 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
                     <Label htmlFor="wiz-address">Address / nearest landmark</Label>
                     <Input id="wiz-address" placeholder="e.g. Off the Adenta–Dodowa road, near the school" aria-invalid={!!errors.address} {...register("address")} />
                     {err("address")}
-                  </div>
-
-                  {/* find-on-map: town search + use-my-location */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="wiz-place">Find it on the map</Label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <div className="relative flex-1">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                        <Input
-                          id="wiz-place"
-                          value={placeQuery}
-                          onChange={(e) => {
-                            setPlaceQuery(e.target.value);
-                            setPlaceOpen(true);
-                          }}
-                          onFocus={() => setPlaceOpen(true)}
-                          onBlur={() => setTimeout(() => setPlaceOpen(false), 150)}
-                          placeholder="Search a town — Kumasi, Tamale, Aburi…"
-                          className="h-10 pl-9"
-                          autoComplete="off"
-                        />
-                        {placeOpen && (
-                          <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-popover p-1 shadow-lg">
-                            {(placeQuery.trim() ? searchPlaces(placeQuery) : GHANA_PLACES.filter((p) => p.major)).map((p) => (
-                              <li key={`${p.name}-${p.region}`}>
-                                <button
-                                  type="button"
-                                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => pickPlace(p)}
-                                >
-                                  <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-medium">{p.name}</span>
-                                    <span className="block truncate text-xs text-muted-foreground">{p.region} Region</span>
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                      <Button type="button" variant="outline" className="h-10 shrink-0" onClick={useMyLocation} disabled={locating}>
-                        {locating ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <LocateFixed data-icon="inline-start" />}
-                        Use my location
-                      </Button>
-                    </div>
                   </div>
                 </section>
 
@@ -796,15 +888,34 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
                                     fallbackPrice: Math.round(values.price) || 50000,
                                     fallbackOwner: user.company ?? user.name,
                                   });
-                                  setFileParcels(fc);
-                                  const center = collectionCenter(fc);
+                                  // drop tiny slivers/artifacts the backend would reject (area < 10 m²)
+                                  const valid = fc.features.filter((f) => f.properties.areaSqm >= MIN_PARCEL_AREA_SQM);
+                                  const dropped = fc.features.length - valid.length;
+                                  if (valid.length === 0) {
+                                    toast.error("No usable plots in that file", {
+                                      description: `Every polygon is under ${MIN_PARCEL_AREA_SQM} m² — check the file's coordinate units.`,
+                                    });
+                                    return;
+                                  }
+                                  if (valid.length > MAX_ESTATE_PLOTS) {
+                                    toast.error("Too many plots for one listing", {
+                                      description: `A listing can hold up to ${MAX_ESTATE_PLOTS} plots — this file has ${valid.length.toLocaleString()}. Split your survey into phases (separate listings), or trim it to ${MAX_ESTATE_PLOTS}.`,
+                                    });
+                                    return;
+                                  }
+                                  const cleaned: ParcelCollection = { type: "FeatureCollection", features: valid };
+                                  setFileParcels(cleaned);
+                                  const center = collectionCenter(cleaned);
                                   setValue("geoFileName", files[0].name);
                                   setValue("sellAsPlots", true);
                                   setValue("lat", center.lat, { shouldValidate: true });
                                   setValue("lng", center.lng, { shouldValidate: true });
                                   flyTo(center.lat, center.lng, 16);
-                                  toast.success(`Parsed ${fc.features.length} parcels from ${files[0].name}`, {
-                                    description: "The map has jumped to them — they'll be selectable once you publish.",
+                                  toast.success(`Parsed ${valid.length} parcels from ${files[0].name}`, {
+                                    description:
+                                      dropped > 0
+                                        ? `Skipped ${dropped} tiny polygon${dropped > 1 ? "s" : ""} under ${MIN_PARCEL_AREA_SQM} m². The map jumped to the rest.`
+                                        : "The map has jumped to them — they'll be selectable once you publish.",
                                   });
                                 } catch (err) {
                                   toast.error(err instanceof Error ? err.message : "Couldn't parse that file");
@@ -854,6 +965,8 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
                     readOnly
                     drawnCount={drawnCount}
                     focusTarget={focusTarget}
+                    focusBounds={focusBounds}
+                    flaggedPlotNumbers={flaggedPlotNumbers}
                     onDrawParcel={addDrawnParcel}
                     onChange={({ lat, lng }) => {
                       setValue("lat", lat, { shouldValidate: true });
@@ -871,6 +984,89 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
                       No plots yet — add them above with <span className="font-medium text-foreground">Enter coordinates</span> or by uploading a GeoJSON / KML file.
                     </p>
                   )}
+
+                  {/* self-overlap check — the backend rejects plots that overlap each other */}
+                  {selfOverlaps.length > 0 && (
+                    <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5">
+                      <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                        <TriangleAlert className="size-4 shrink-0" aria-hidden />
+                        {selfOverlaps.length} of your plots overlap each other
+                      </p>
+                      <p className="text-xs leading-relaxed text-destructive/90">
+                        These plots can&apos;t be published as-is — a plot map can&apos;t have two plots on the same land. The
+                        overlapping plots are <span className="font-semibold">outlined in red on the map above</span>; tap a plot
+                        number to zoom to it, then fix the overlaps in your survey file and re-upload.
+                      </p>
+                      <ul className="space-y-1 text-xs">
+                        {selfOverlaps.slice(0, 6).map((o, i) => (
+                          <li key={`${o.a}-${o.b}-${i}`}>
+                            <button
+                              type="button"
+                              onClick={() => zoomToPlots(o.a, o.b)}
+                              className="flex w-full flex-wrap items-center gap-x-1.5 rounded-md px-2 py-1 text-left text-destructive/90 transition-colors hover:bg-destructive/10"
+                            >
+                              <span className="font-mono font-semibold">{o.a}</span>
+                              overlaps
+                              <span className="font-mono font-semibold">{o.b}</span>
+                              <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
+                                <ZoomIn className="size-3.5" aria-hidden /> Zoom to both
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                        {selfOverlaps.length > 6 && (
+                          <li className="px-2 text-muted-foreground">…and {selfOverlaps.length - 6} more</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* double-sale check — warn if the seller's plots overlap registered land */}
+                  {fileParcels?.features.length ? (
+                    overlaps.length > 0 ? (
+                      <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5">
+                        <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                          <TriangleAlert className="size-4 shrink-0" aria-hidden />
+                          Your land overlaps {new Set(overlaps.map((o) => o.against)).size} already-registered plot
+                          {new Set(overlaps.map((o) => o.against)).size > 1 ? "s" : ""}
+                        </p>
+                        <p className="text-xs leading-relaxed text-destructive/90">
+                          {new Set(overlaps.map((o) => o.plotNumber)).size} of your plot
+                          {new Set(overlaps.map((o) => o.plotNumber)).size > 1 ? "s" : ""} overlap land already registered on
+                          RealEstate — the #1 sign of a double-sale. Your overlapping plots are{" "}
+                          <span className="font-semibold">outlined in red on the map</span>; tap one to zoom to it. Buyers run this
+                          same check, so fix your boundaries before publishing (or continue only if it&apos;s a mistake).
+                        </p>
+                        <ul className="space-y-1 text-xs">
+                          {overlaps.slice(0, 6).map((o, i) => (
+                            <li key={`${o.plotNumber}-${o.against}-${i}`}>
+                              <button
+                                type="button"
+                                onClick={() => zoomToPlots(o.plotNumber)}
+                                className="flex w-full flex-wrap items-center gap-x-1.5 rounded-md px-2 py-1 text-left text-destructive/90 transition-colors hover:bg-destructive/10"
+                              >
+                                <span className="font-mono font-semibold">{o.plotNumber}</span>
+                                overlaps
+                                <span className="font-mono font-semibold">{o.against}</span>
+                                <span className="text-muted-foreground">· {o.owner}</span>
+                                <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
+                                  <ZoomIn className="size-3.5" aria-hidden /> Zoom
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                          {overlaps.length > 6 && (
+                            <li className="text-muted-foreground">…and {overlaps.length - 6} more overlap{overlaps.length - 6 > 1 ? "s" : ""}</li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : registeredParcels ? (
+                      <p className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">
+                        <ShieldCheck className="size-4 shrink-0" aria-hidden />
+                        No overlaps — your plots don&apos;t clash with any already-registered land.
+                      </p>
+                    ) : null
+                  ) : null}
 
                   {/* drawn plots list — right under the map you drew them on */}
                   {canConfigurePlots && drawnCount > 0 && !values.geoFileName && (
@@ -1106,6 +1302,16 @@ export function ListingWizard({ listing }: { listing?: Listing }) {
 
             {step === 6 && (
               <div className="space-y-6">
+                {overlaps.length > 0 && (
+                  <p className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-xs font-medium text-destructive">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      Heads up: {new Set(overlaps.map((o) => o.plotNumber)).size} of your plots overlap already-registered
+                      land (see step 1). Publishing an overlapping listing is a double-sale red flag — fix the boundaries
+                      first unless you&apos;re certain it&apos;s a mistake.
+                    </span>
+                  </p>
+                )}
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="wiz-price">Price per plot (₵)</Label>

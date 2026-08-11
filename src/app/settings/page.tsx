@@ -22,7 +22,7 @@ export default function SettingsPage() {
   );
 }
 
-/** Remounts the form whenever the demo user changes, so state re-initialises cleanly. */
+/** Remounts the form whenever the signed-in user changes, so state re-initialises cleanly. */
 function SettingsGate() {
   const { session } = useSession();
   return <SettingsContent key={session!.user.id} />;

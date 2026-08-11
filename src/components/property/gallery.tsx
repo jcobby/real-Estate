@@ -36,7 +36,7 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
             className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold shadow backdrop-blur-sm">
-            <Expand className="size-3.5" aria-hidden /> {images.length} photos
+            <Expand className="size-3.5" aria-hidden /> {images.length} photo{images.length > 1 ? "s" : ""}
           </span>
         </button>
         <div className="col-span-4 grid grid-cols-3 gap-2 sm:col-span-1 sm:row-span-2 sm:grid-cols-1 sm:grid-rows-3">

@@ -45,7 +45,7 @@ function normalizeGhPhone(input: string): string {
   return d.length === 9 ? `+233${d}` : input.trim();
 }
 
-const schema = z.object({
+const baseSchema = z.object({
   name: z.string().min(2, "Enter your full name"),
   email: z.string().email("Enter a valid email address"),
   phone: z
@@ -56,6 +56,7 @@ const schema = z.object({
     .min(10, "At least 10 characters")
     .regex(/[A-Za-z]/, "Include at least one letter")
     .regex(/[0-9]/, "Include at least one number"),
+  confirmPassword: z.string().min(1, "Re-enter your password to confirm"),
   region: z.string().min(1, "Pick your region"),
   company: z.string().optional(),
   category: z.string().optional(),
@@ -63,10 +64,15 @@ const schema = z.object({
   terms: z.boolean().refine((v) => v, "You must accept the terms to continue"),
 });
 
+const schema = baseSchema.refine((v) => v.password === v.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 type FormValues = z.infer<typeof schema>;
 
 const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
-  0: ["name", "email", "phone", "password"],
+  0: ["name", "email", "phone", "password", "confirmPassword"],
   1: ["region", "company", "category", "budget"],
   2: ["terms"],
 };
@@ -119,7 +125,7 @@ export function RegisterWizard({ role }: { role: Role }) {
       if (e instanceof ApiError && e.fieldErrors) {
         let jump = step;
         for (const [field, message] of Object.entries(e.fieldErrors)) {
-          if (field in schema.shape) {
+          if (field in baseSchema.shape) {
             setError(field as keyof FormValues, { message });
             const s = Number(
               Object.keys(STEP_FIELDS).find((k) => STEP_FIELDS[Number(k)].includes(field as keyof FormValues)),
@@ -211,6 +217,23 @@ export function RegisterWizard({ role }: { role: Role }) {
                     </li>
                   ))}
                 </ul>
+              );
+            })()}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="reg-confirm">Confirm password</Label>
+            <Input id="reg-confirm" type="password" autoComplete="new-password" placeholder="••••••••" aria-invalid={!!errors.confirmPassword} {...register("confirmPassword")} />
+            {(() => {
+              const cpw = values.confirmPassword ?? "";
+              const pw = values.password ?? "";
+              if (errors.confirmPassword) return err("confirmPassword");
+              if (!cpw) return null;
+              const match = cpw === pw;
+              return (
+                <p className={cn("flex items-center gap-1.5 text-xs transition-colors", match ? "text-success" : "text-muted-foreground")}>
+                  {match ? <Check className="size-3.5 shrink-0" aria-hidden /> : <Circle className="size-3.5 shrink-0" aria-hidden />}
+                  {match ? "Passwords match" : "Passwords must match"}
+                </p>
               );
             })()}
           </div>

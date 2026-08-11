@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MapBrowserLoader } from "@/components/map/map-browser-loader";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 export const metadata: Metadata = {
   title: "Map browse — pick your exact plot from the sky",
@@ -10,10 +11,15 @@ export const metadata: Metadata = {
 
 export default function MapPage() {
   return (
-    <main className="relative h-[calc(100vh-4rem)] h-[calc(100dvh-4rem)] w-full overflow-hidden">
-      <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading map…</div>}>
-        <MapBrowserLoader />
-      </Suspense>
-    </main>
+    <>
+      {/* a tall map section (not the whole viewport) so the page still scrolls,
+          revealing the footer below — the map keeps its own overflow for the canvas */}
+      <main className="relative h-[80vh] h-[80dvh] min-h-[520px] w-full overflow-hidden">
+        <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading map…</div>}>
+          <MapBrowserLoader />
+        </Suspense>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

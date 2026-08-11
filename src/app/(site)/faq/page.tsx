@@ -40,7 +40,7 @@ const FAQS = [
   },
   {
     q: "Can I sell my own family land?",
-    a: "Yes. Register as a seller, run the listing wizard (you can draw your boundary on the map or upload a GeoJSON/KML file from your surveyor), and submit your documents for verification. Individual owners and licensed agents are both welcome.",
+    a: "Yes. Register as a seller, run the listing wizard (enter your plot's boundary coordinates or upload a GeoJSON/KML file from your surveyor), and submit your documents for verification. Individual owners and licensed agents are both welcome.",
   },
 ];
 

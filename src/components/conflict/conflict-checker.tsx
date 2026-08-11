@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BadgeCheck,
@@ -11,15 +10,16 @@ import {
   CreditCard,
   Eye,
   Keyboard,
+  LandPlot,
   LoaderCircle,
   LocateFixed,
   Mail,
   MapPinned,
+  RotateCcw,
   Search,
   Send,
   ShieldAlert,
   Smartphone,
-  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,62 +41,56 @@ import { PlotStatusBadge } from "@/components/shared/badges";
 import { CoordinatePolygonInput } from "@/components/shared/coordinate-polygon-input";
 import { GHANA_PLACES, searchPlaces } from "@/data/ghana-places";
 import { ConflictMap } from "./conflict-map";
-import { checkLandConflict, getEstates, getParcels, sendConflictReportEmail } from "@/lib/api";
-import { parseParcelFile } from "@/lib/geo";
+import { checkLandConflict, getEstates, getParcels, payForGuestCheck, sendConflictReportEmail } from "@/lib/api";
+import { ApiError, describeError } from "@/lib/api/http";
+import { convexHull, parseParcelFile, ringAreaSqm } from "@/lib/geo";
 import { useSession } from "@/stores/session";
-import { formatNumber, formatSqft, formatSqm } from "@/lib/format";
-import type { ConflictResult, ParcelCollection } from "@/types";
+import { formatAcres, formatNumber, formatSqft, formatSqm } from "@/lib/format";
+import type { ConflictResult, ParcelCollection, ParcelConflict } from "@/types";
 import { cn } from "@/lib/utils";
 
 const FEE = 25;
 const OYIBI = { lat: 5.8265, lng: -0.0866 };
-/** A sample boundary drawn over the Oyibi estate so the demo shows a conflict. */
-const EXAMPLE: number[][] = [
-  [-0.087, 5.8262],
-  [-0.0862, 5.8262],
-  [-0.0862, 5.8268],
-  [-0.087, 5.8268],
-  [-0.087, 5.8262],
-];
-/**
- * Canned result for "Try an example" — a self-contained demo so first-time and
- * signed-out visitors instantly see a real conflict (no login, no fee, no API).
- */
-const EXAMPLE_RESULT: ConflictResult = {
-  searcherRing: EXAMPLE,
-  searcherSqm: 5880,
-  totalOverlapSqm: 1460,
-  clear: false,
-  conflicts: [
-    {
-      parcelId: "oyibi-hillcrest-032",
-      plotNumber: "OY-032",
-      owner: "Adom Lands & Estates Ltd",
-      estateId: "oyibi-hillcrest",
-      estateName: "Oyibi Hillcrest Gardens",
-      status: "available",
-      overlapSqm: 1460,
-      overlapRings: [
-        [
-          [-0.087, 5.8263],
-          [-0.0867, 5.8263],
-          [-0.0867, 5.8267],
-          [-0.087, 5.8267],
-          [-0.087, 5.8263],
-        ],
-      ],
-    },
-  ],
-};
+/** Large uploads (or a guest's single paid check) run as one combined footprint. */
+const MAX_EXACT_BOUNDARIES = 12;
+
+/** Count a ring's distinct corners (ignoring the closing repeat of the first point). */
+const ringCorners = (r: number[][]) =>
+  r.length > 1 && r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1] ? r.length - 1 : r.length;
+
+const closeRing = (r: number[][]) =>
+  r.length > 1 && r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1] ? r : [...r, r[0]];
+
+/** Fold several single-boundary checks into one result (dedupe overlapping plots by id). */
+function mergeConflictResults(results: ConflictResult[], rings: number[][][]): ConflictResult {
+  const byParcel = new Map<string, ParcelConflict>();
+  for (const res of results) {
+    for (const c of res.conflicts) {
+      const ex = byParcel.get(c.parcelId);
+      if (ex) {
+        ex.overlapSqm = +(ex.overlapSqm + c.overlapSqm).toFixed(1);
+        ex.overlapRings = [...ex.overlapRings, ...c.overlapRings];
+      } else {
+        byParcel.set(c.parcelId, { ...c, overlapRings: [...c.overlapRings] });
+      }
+    }
+  }
+  const conflicts = [...byParcel.values()].sort((a, b) => b.overlapSqm - a.overlapSqm);
+  return {
+    searcherRing: closeRing(rings[0] ?? []),
+    searcherSqm: +rings.reduce((s, r) => s + ringAreaSqm(r), 0).toFixed(1),
+    conflicts,
+    totalOverlapSqm: +conflicts.reduce((s, c) => s + c.overlapSqm, 0).toFixed(1),
+    clear: conflicts.length === 0,
+  };
+}
 
 export function ConflictChecker() {
   const { session } = useSession();
-  const searchParams = useSearchParams();
-  const [boundary, setBoundary] = useState<number[][] | null>(null);
+  const [rings, setRings] = useState<number[][][]>([]);
   const [result, setResult] = useState<ConflictResult | null>(null);
   const [showCoords, setShowCoords] = useState(false);
   const [running, setRunning] = useState(false);
-  const [paid, setPaid] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const focusNonce = useRef(0);
   const [focus, setFocus] = useState(0);
@@ -121,7 +115,7 @@ export function ConflictChecker() {
       (pos) => {
         setLocating(false);
         flyTo(pos.coords.latitude, pos.coords.longitude, 17);
-        toast.success("Jumped to your location", { description: "Now draw or enter your boundary." });
+        toast.success("Jumped to your location", { description: "Now enter your boundary coordinates or upload a file." });
       },
       () => {
         setLocating(false);
@@ -135,56 +129,79 @@ export function ConflictChecker() {
     queryKey: ["all-parcels"],
     queryFn: async () => {
       const estates = await getEstates();
-      const collections = await Promise.all(estates.map((e) => getParcels(e.id)));
-      return { type: "FeatureCollection", features: collections.flatMap((c) => c?.features ?? []) } as ParcelCollection;
+      // one estate's parcels failing must not sink the whole check — skip it
+      const collections = await Promise.allSettled(estates.map((e) => getParcels(e.id)));
+      const features = collections.flatMap((r) => (r.status === "fulfilled" ? (r.value?.features ?? []) : []));
+      return { type: "FeatureCollection", features } as ParcelCollection;
     },
   });
 
-  const setLand = (ring: number[][]) => {
-    setBoundary(ring);
-    setResult(null);
+  const bumpFocus = () => {
     focusNonce.current += 1;
     setFocus(focusNonce.current);
   };
 
-  const execute = async (ring: number[][]) => {
+  /** Replace every boundary — an uploaded file defines the whole set at once. */
+  const setLand = (next: number[][][]) => {
+    setRings(next);
+    setResult(null);
+    bumpFocus();
+  };
+  /** Add one more boundary — typed coordinates or a shape traced on the map. */
+  const addRing = (ring: number[][]) => {
+    setRings((prev) => [...prev, ring]);
+    setResult(null);
+    bumpFocus();
+  };
+  const clearLand = () => {
+    setRings([]);
+    setResult(null);
+  };
+
+  const execute = async (checkToken?: string) => {
+    if (rings.length === 0) return;
     setRunning(true);
     try {
-      setResult(await checkLandConflict(ring));
+      // A handful of boundaries are checked exactly (in parallel) and merged.
+      // A big multi-plot file — or a guest's single paid check — is checked as
+      // one combined footprint (the convex hull of every polygon), so we never
+      // fire hundreds of requests for a 1,000-plot survey.
+      const useFootprint = rings.length > 1 && (!!checkToken || rings.length > MAX_EXACT_BOUNDARIES);
+      const toCheck = useFootprint ? [convexHull(rings.flat())] : rings;
+      const results = await Promise.all(toCheck.map((r) => checkLandConflict(r, checkToken)));
+      setResult(mergeConflictResults(results, toCheck));
+      if (useFootprint) {
+        toast("Checked as one combined boundary", {
+          description: `Your ${rings.length.toLocaleString()} plots were checked as a single outer footprint.`,
+        });
+      }
+    } catch (err) {
+      // A guest — or a member whose session lapsed — needs to pay for this check.
+      if (err instanceof ApiError && err.code === "PAYMENT_REQUIRED") {
+        setPayOpen(true);
+      } else {
+        toast.error("Couldn't run the check", { description: describeError(err) });
+      }
     } finally {
       setRunning(false);
     }
   };
 
   const run = () => {
-    if (!boundary) {
-      toast.error("Add your land first", { description: "Enter coordinates, upload a GeoJSON/KML file, or try the example." });
+    if (rings.length === 0) {
+      toast.error("Add your land first", { description: "Enter your boundary coordinates or upload a GeoJSON/KML file." });
       return;
     }
-    if (!session && !paid) {
-      setPayOpen(true);
+    if (!session) {
+      setPayOpen(true); // guests pay a one-off fee for each check
       return;
     }
-    execute(boundary);
+    execute();
   };
 
-  /** One-tap demo: drop a sample boundary over Oyibi and show a canned conflict
-   *  result immediately — free, no login, so first-time users just "get it". */
-  const runExample = () => {
-    setBoundary(EXAMPLE);
-    setResult(EXAMPLE_RESULT);
-    focusNonce.current += 1;
-    setFocus(focusNonce.current);
-    flyTo(OYIBI.lat, OYIBI.lng, 16.5);
-  };
-
-  // Auto-run the example when arriving from the homepage's "See a live example".
-  useEffect(() => {
-    if (!searchParams.get("example")) return;
-    const id = setTimeout(runExample, 150);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /** Live totals across every plotted boundary, shown once land is on the map. */
+  const landSqm = rings.reduce((s, r) => s + ringAreaSqm(r), 0);
+  const cornerCount = rings.reduce((s, r) => s + ringCorners(r), 0);
 
   const pct = (overlap: number) => (result?.searcherSqm ? Math.round((overlap / result.searcherSqm) * 100) : 0);
 
@@ -248,32 +265,47 @@ export function ConflictChecker() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant={showCoords ? "secondary" : "default"} size="sm" onClick={() => setShowCoords((v) => !v)}>
-              <Keyboard data-icon="inline-start" /> Enter coordinates
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={runExample}>
-              <Sparkles data-icon="inline-start" /> Try an example
-            </Button>
-            <div className="w-full sm:w-auto sm:flex-1">
-              <Dropzone
-                label="…or upload a GeoJSON / KML boundary"
-                accept=".geojson,.json,.kml,.kmz"
-                multiple={false}
-                className="px-4 py-4"
-                onFiles={async (files) => {
-                  try {
-                    const fc = await parseParcelFile(files[0], { estateId: "check", fallbackPrice: 0, fallbackOwner: "You" });
-                    const ring = fc.features[0]?.geometry.coordinates[0];
-                    if (!ring) throw new Error("No polygon found in that file.");
-                    setLand(ring);
-                    toast.success(`Loaded boundary from ${files[0].name}`);
-                  } catch (err) {
-                    toast.error(err instanceof Error ? err.message : "Couldn't read that file");
-                  }
-                }}
-              />
-            </div>
+          {/* two equally-sized, equally-prominent ways to define the boundary */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              aria-expanded={showCoords}
+              onClick={() => setShowCoords((v) => !v)}
+              className={cn(
+                "flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 px-4 py-8 text-center transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring",
+                showCoords
+                  ? "border-primary bg-accent"
+                  : "border-primary/60 bg-primary/5 hover:border-primary hover:bg-primary/10",
+              )}
+            >
+              <span className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Keyboard className="size-5" aria-hidden />
+              </span>
+              <span className="text-sm font-semibold">Enter coordinates</span>
+              <span className="text-xs text-muted-foreground">Type each corner of your land</span>
+            </button>
+            <Dropzone
+              label="Upload GeoJSON / KML"
+              hint="Drag a surveyor file, or click to browse"
+              accept=".geojson,.json,.kml,.kmz"
+              multiple={false}
+              className="px-4 py-8"
+              onFiles={async (files) => {
+                try {
+                  const fc = await parseParcelFile(files[0], { estateId: "check", fallbackPrice: 0, fallbackOwner: "You" });
+                  const newRings = fc.features.map((f) => f.geometry.coordinates[0]).filter((r) => Array.isArray(r) && r.length >= 3);
+                  if (newRings.length === 0) throw new Error("No polygon found in that file.");
+                  setLand(newRings);
+                  toast.success(
+                    newRings.length > 1
+                      ? `Loaded ${newRings.length} boundaries from ${files[0].name}`
+                      : `Loaded boundary from ${files[0].name}`,
+                  );
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Couldn't read that file");
+                }
+              }}
+            />
           </div>
 
           {showCoords && (
@@ -285,25 +317,30 @@ export function ConflictChecker() {
                 submitLabel="Plot boundary"
                 onCancel={() => setShowCoords(false)}
                 onPlot={(ring) => {
-                  setLand(ring);
+                  addRing(ring);
                   setShowCoords(false);
                   toast.success("Boundary plotted from coordinates");
                 }}
               />
             </div>
           )}
-          {boundary && (
-            <p className="flex items-center gap-1.5 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          {rings.length > 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               <MapPinned className="size-3.5 shrink-0 text-primary" aria-hidden />
-              Boundary set{result ? "" : " — run the check on the right"}.
-            </p>
+              <span className="flex-1">
+                {rings.length} boundar{rings.length > 1 ? "ies" : "y"} set{result ? "" : " — run the check on the right"}.
+              </span>
+              <Button type="button" variant="ghost" size="xs" onClick={clearLand}>
+                <RotateCcw data-icon="inline-start" /> Start over
+              </Button>
+            </div>
           )}
         </Card>
 
         <ConflictMap
           center={OYIBI}
           allParcels={allParcels}
-          boundary={boundary}
+          boundaries={rings}
           result={result}
           focusNonce={focus}
           flyTarget={flyTarget}
@@ -317,7 +354,7 @@ export function ConflictChecker() {
           <p className="text-xs text-muted-foreground">
             We compare your boundary against every registered plot and highlight any overlap.
           </p>
-          <Button size="lg" className="h-11 w-full" onClick={run} disabled={running || !boundary}>
+          <Button size="lg" className="h-11 w-full" onClick={run} disabled={running || rings.length === 0}>
             {running ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <ShieldAlert data-icon="inline-start" />}
             {running ? "Checking…" : "Check for conflicts"}
           </Button>
@@ -327,15 +364,48 @@ export function ConflictChecker() {
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              {paid ? "Payment received — run as many checks as you like." : `A one-off ₵${FEE} fee applies for guests. `}
-              {!paid && (
-                <Link href="/login" className="font-medium text-primary hover:underline">
-                  Sign in to check free
-                </Link>
-              )}
+              {`A one-off ₵${FEE} fee applies per check for guests. `}
+              <Link href="/login" className="font-medium text-primary hover:underline">
+                Sign in to check free
+              </Link>
             </p>
           )}
         </Card>
+
+        {/* measured properties of the plotted land — appears as soon as it's on the map */}
+        {rings.length > 0 && (
+          <Card className="gap-3 rounded-2xl p-5">
+            <div className="flex items-center gap-2">
+              <LandPlot className="size-4.5 text-primary" aria-hidden />
+              <p className="font-heading text-base font-semibold">Your land</p>
+              {rings.length > 1 && (
+                <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {rings.length} boundaries
+                </span>
+              )}
+            </div>
+            <dl className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <dt className="text-xs text-muted-foreground">Total area</dt>
+                <dd className="mt-0.5 font-heading text-lg font-bold">{formatAcres(landSqm)}</dd>
+              </div>
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <dt className="text-xs text-muted-foreground">Size</dt>
+                <dd className="mt-0.5 font-heading text-lg font-bold">{formatSqm(landSqm)}</dd>
+              </div>
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <dt className="text-xs text-muted-foreground">In feet</dt>
+                <dd className="mt-0.5 text-sm font-semibold">{formatSqft(landSqm)}</dd>
+              </div>
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <dt className="text-xs text-muted-foreground">Corners</dt>
+                <dd className="mt-0.5 text-sm font-semibold">
+                  {cornerCount} point{cornerCount === 1 ? "" : "s"}
+                </dd>
+              </div>
+            </dl>
+          </Card>
+        )}
 
         {running && <Skeleton className="h-40 rounded-2xl" />}
 
@@ -420,7 +490,16 @@ export function ConflictChecker() {
         )}
       </aside>
 
-      <PayDialog open={payOpen} onOpenChange={setPayOpen} fee={FEE} onPaid={() => { setPaid(true); setPayOpen(false); if (boundary) execute(boundary); }} phone={session?.user.phone} />
+      <PayDialog
+        open={payOpen}
+        onOpenChange={setPayOpen}
+        fee={FEE}
+        onPaid={(token) => {
+          setPayOpen(false);
+          execute(token);
+        }}
+        phone={session?.user.phone}
+      />
     </div>
   );
 }
@@ -517,7 +596,7 @@ function PayDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   fee: number;
-  onPaid: () => void;
+  onPaid: (checkToken: string) => void;
   phone?: string;
 }) {
   const [method, setMethod] = useState<"momo" | "card">("momo");
@@ -534,10 +613,15 @@ function PayDialog({
       return;
     }
     setPaying(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setPaying(false);
-    toast.success("Payment received", { description: "Running your conflict check…" });
-    onPaid();
+    try {
+      const checkToken = await payForGuestCheck();
+      toast.success("Payment received", { description: "Running your conflict check…" });
+      onPaid(checkToken);
+    } catch (err) {
+      toast.error("Payment couldn't be completed", { description: describeError(err) });
+    } finally {
+      setPaying(false);
+    }
   };
 
   return (

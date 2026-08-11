@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { ArrowRight, BadgeCheck, MapPin, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, MapPin, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -16,6 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+/** MapLibre only loads once the hero mounts, and never on the server. */
+const HeroMap = dynamic(() => import("./hero-map").then((m) => m.HeroMap), {
+  ssr: false,
+  loading: () => (
+    <div className="mx-auto hidden w-full max-w-md lg:block">
+      <Skeleton className="h-[380px] w-full rounded-3xl" />
+    </div>
+  ),
+});
 
 const LAND_TYPES = [
   { value: "all", label: "Any land type" },
@@ -139,16 +151,16 @@ export function Hero() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.22 }}
-            className="mt-4"
+            className="mt-5 flex flex-col items-start gap-2 sm:flex-row sm:items-center"
           >
-            <Link
-              href="/land-check"
-              className="group inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-            >
-              <ShieldCheck className="size-4" aria-hidden />
-              Buying land? Run a free <span className="font-semibold">Land Check</span> for overlaps first
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-            </Link>
+            <Button size="lg" className="group h-12 px-6 text-base" render={<Link href="/land-check" />}>
+              <ShieldCheck data-icon="inline-start" className="size-4.5" />
+              Check your land for conflicts
+              <ArrowRight data-icon="inline-end" className="transition-transform group-hover:translate-x-0.5" />
+            </Button>
+            <span className="text-xs text-secondary-foreground/70 sm:text-sm">
+              Buying land? Spot double-sales before you pay — free for members.
+            </span>
           </motion.div>
 
           <motion.div
@@ -172,83 +184,14 @@ export function Hero() {
           </motion.div>
         </div>
 
-        <HeroPlotPreview browseLabel={t("browseMap")} onBrowse={() => router.push("/map")} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <HeroMap browseLabel={t("browseMap")} onBrowse={() => router.push("/map")} />
+        </motion.div>
       </div>
     </section>
-  );
-}
-
-/** Stylised plot-grid illustration: “click a plot on the satellite map”. */
-function HeroPlotPreview({ browseLabel, onBrowse }: { browseLabel: string; onBrowse: () => void }) {
-  const cells = [
-    "a", "s", "a", "r", "a", "s",
-    "s", "a", "sel", "a", "r", "a",
-    "a", "r", "a", "a", "s", "a",
-    "s", "a", "a", "sel", "a", "r",
-  ] as const;
-  const fill = { a: "fill-success/35", s: "fill-muted-foreground/25", r: "fill-warning/35", sel: "fill-primary" };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.2 }}
-      className="relative mx-auto hidden w-full max-w-md lg:block"
-    >
-      <div className="rounded-3xl border border-secondary-foreground/15 bg-background/5 p-4 shadow-2xl backdrop-blur-sm">
-        <svg viewBox="0 0 300 210" className="w-full rounded-2xl bg-secondary-foreground/5" role="img" aria-label="Illustration of selectable land plots on a map">
-          <g stroke="currentColor" strokeOpacity={0.18}>
-            {cells.map((c, i) => {
-              const x = 12 + (i % 6) * 47;
-              const y = 12 + Math.floor(i / 6) * 47;
-              return (
-                <rect
-                  key={i}
-                  x={x}
-                  y={y}
-                  width={43}
-                  height={43}
-                  rx={7}
-                  className={fill[c]}
-                />
-              );
-            })}
-          </g>
-          {/* native SMIL pulse — framer keyframes on SVG `r` throw when interrupted mid-navigation */}
-          <circle cx={12 + 2 * 47 + 21.5} cy={12 + 1 * 47 + 21.5} r={9} className="fill-primary/30">
-            <animate attributeName="r" values="9;17;9" dur="2.2s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.7;0.15;0.7" dur="2.2s" repeatCount="indefinite" />
-          </circle>
-        </svg>
-
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 3.4 }}
-          className="absolute -top-4 right-6 flex items-center gap-2 rounded-xl bg-background px-3 py-2 text-foreground shadow-lg"
-        >
-          <span className="size-2 rounded-full bg-success" aria-hidden />
-          <span className="text-xs font-semibold">Plot OY-042 · Available</span>
-        </motion.div>
-        <motion.div
-          animate={{ y: [0, 6, 0] }}
-          transition={{ repeat: Infinity, duration: 3.8, delay: 0.6 }}
-          className="absolute -bottom-4 left-6 flex items-center gap-2 rounded-xl bg-background px-3 py-2 text-foreground shadow-lg"
-        >
-          <BadgeCheck className="size-4 text-success" aria-hidden />
-          <span className="text-xs font-semibold">Escrow protected · Title verified</span>
-        </motion.div>
-
-        <div className="mt-4 flex items-center justify-between gap-3 px-1">
-          <div className="flex items-center gap-3 text-[11px] text-secondary-foreground/70">
-            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-success/70" aria-hidden /> Available</span>
-            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-warning/70" aria-hidden /> Reserved</span>
-            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-primary" aria-hidden /> Selected</span>
-          </div>
-          <Button size="sm" variant="outline" className="border-primary/40 bg-transparent text-primary hover:bg-primary/10 hover:text-primary" onClick={onBrowse}>
-            {browseLabel}
-          </Button>
-        </div>
-      </div>
-    </motion.div>
   );
 }

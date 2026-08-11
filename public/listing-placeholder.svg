@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="No photo yet">
+  <rect width="800" height="600" fill="#e5e7eb"/>
+  <g fill="none" stroke="#9ca3af" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="300" y="225" width="200" height="150" rx="14"/>
+    <circle cx="356" cy="276" r="18"/>
+    <path d="M312 358l56-56 40 40 54-70 62 86"/>
+  </g>
+  <text x="400" y="430" font-family="system-ui, sans-serif" font-size="26" fill="#9ca3af" text-anchor="middle">No photo yet</text>
+</svg>

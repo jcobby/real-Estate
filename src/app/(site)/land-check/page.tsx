@@ -5,7 +5,7 @@ import { ConflictCheckerLoader } from "@/components/conflict/conflict-checker-lo
 export const metadata: Metadata = {
   title: "Land Check — is this plot already someone else's?",
   description:
-    "Draw or upload a land boundary and instantly see whether it overlaps any registered plot on RealEstate. Free for members, pay-as-you-go for guests.",
+    "Enter your land's boundary coordinates or upload a GeoJSON/KML file and instantly see whether it overlaps any registered plot on RealEstate. Free for members, pay-as-you-go for guests.",
 };
 
 export default function LandCheckPage() {
@@ -17,8 +17,8 @@ export default function LandCheckPage() {
         </p>
         <h1 className="mt-3 font-heading text-2xl font-bold tracking-tight sm:text-3xl">Land Check</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Mark your land on the map — we instantly show whether it clashes with a plot that&apos;s already
-          registered. New here? Tap <span className="font-medium text-foreground">Try an example</span> to see it work.
+          Enter your land&apos;s boundary coordinates or upload a GeoJSON / KML file, and we&apos;ll instantly show
+          whether it clashes with a plot that&apos;s already registered.
         </p>
       </div>
       <ConflictCheckerLoader />

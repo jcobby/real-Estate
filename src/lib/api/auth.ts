@@ -68,7 +68,10 @@ export async function register(input: RegisterInput): Promise<Session> {
 
 /** Refresh the current user from the API (used after nullable fields change). */
 export async function getCurrentUser(): Promise<User | null> {
-  if (LIVE) return one<User>(await http.get("/v1/auth/me"), "user");
+  if (LIVE) {
+    const u = one<User>(await http.get("/v1/auth/me"), "user");
+    return u ? normalizeUser(u) : null;
+  }
   return null;
 }
 

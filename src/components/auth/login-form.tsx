@@ -97,10 +97,8 @@ export function LoginForm() {
         New to RealEstate?{" "}
         <Link href="/register" className="font-semibold text-primary hover:underline">
           Create an account
-        </Link>
-      </p>
-      <p className="text-center text-xs text-muted-foreground">
-        New here? <Link href="/register" className="font-medium text-primary hover:underline">Create an account</Link> in under a minute.
+        </Link>{" "}
+        in under a minute.
       </p>
     </form>
   );

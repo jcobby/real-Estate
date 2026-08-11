@@ -26,7 +26,9 @@ export function DashboardShell({
     item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
   return (
-    <div className="page-container grid gap-8 py-8 lg:grid-cols-[220px_1fr]">
+    // dashboards are data-dense (tables, charts) — give them a wider container than
+    // the reading-width `page-container`, so big screens aren't left half empty
+    <div className="mx-auto grid w-full max-w-[100rem] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[240px_1fr] lg:px-8">
       <nav aria-label={ariaLabel} className="lg:sticky lg:top-20 lg:self-start">
         <ul className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible">
           {nav.map((item) => (

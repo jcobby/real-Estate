@@ -371,6 +371,8 @@ export interface Material {
   description: string;
   deliveryDays: number;
   popular?: boolean;
+  /** Product photo. When absent the UI falls back to a category image. */
+  imageUrl?: string;
 }
 
 export interface MaterialInput {

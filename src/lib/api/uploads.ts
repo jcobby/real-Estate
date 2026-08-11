@@ -1,4 +1,19 @@
-import { LIVE, http, payload } from "./http";
+import { API_BASE, LIVE, http, payload } from "./http";
+
+/** The backend's "local" upload mode returns http://localhost:PORT URLs. From the
+ *  browser those hit the wrong host (and break mixed-content on an https page), so
+ *  re-point any localhost or root-relative URL at the configured API base. */
+function toApiHost(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("/")) return API_BASE + url;
+  try {
+    const u = new URL(url);
+    if (API_BASE && /^(localhost|127\.0\.0\.1)$/i.test(u.hostname)) return API_BASE + u.pathname + u.search;
+  } catch {
+    /* not an absolute URL — leave as-is */
+  }
+  return url;
+}
 
 /** Matches the backend RequestUploadSignRequest.purpose enum. */
 export type UploadPurpose = "listing-image" | "verification-doc" | "estate-geojson" | "avatar" | "other";
@@ -48,22 +63,18 @@ export async function uploadFile(file: File, purpose: UploadPurpose): Promise<Up
     }),
   );
 
-  // Real storage: upload the bytes and use the URL the backend serves them from.
+  // Upload the bytes to the backend's signed URL (re-pointed to the API host — the
+  // backend's local mode hands back localhost URLs the browser can't reach). A failed
+  // upload throws so the caller can tell the user, not keep a broken/placeholder image.
   if (signed.mode !== "sandbox" && signed.uploadUrl) {
-    await fetch(signed.uploadUrl, { method: signed.method || "PUT", headers: signed.headers, body: file });
-    return { storageKey: signed.storageKey, publicUrl: signed.publicUrl, previewUrl };
+    const uploadUrl = toApiHost(signed.uploadUrl);
+    const headers: Record<string, string> = { ...(signed.headers ?? {}) };
+    // our own API host sits behind the dev-tunnel anti-phishing gate (browser PUT too)
+    if (API_BASE && uploadUrl.startsWith(API_BASE)) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
+    const res = await fetch(uploadUrl, { method: signed.method || "PUT", headers, body: file });
+    if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status}).`);
   }
 
-  // Sandbox: the backend returns a placeholder host (cdn.example.com) that doesn't
-  // actually serve the file, so the image would be broken. For listing photos we
-  // stand in with a real curated image so the listing shows something; the seller
-  // still sees their own picture in the wizard (previewUrl). Real uploads take over
-  // automatically once the backend wires real file storage.
-  if (purpose === "listing-image") {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const n = String(1 + Math.floor(Math.random() * 9)).padStart(2, "0");
-    return { storageKey: signed.storageKey, publicUrl: `${origin}/lands/land-${n}.jpg`, previewUrl };
-  }
-
-  return { storageKey: signed.storageKey, publicUrl: signed.publicUrl, previewUrl };
+  // The stored/public URL comes from the backend, re-pointed to a host the browser can reach.
+  return { storageKey: signed.storageKey, publicUrl: toApiHost(signed.publicUrl), previewUrl };
 }

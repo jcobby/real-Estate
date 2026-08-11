@@ -5,7 +5,7 @@
 //
 // Config via env:
 //   API_BASE_URL   backend base (defaults to the current dev tunnel)
-//   FRONTEND_URL   where images are served from (defaults to http://localhost:3000)
+//   FRONTEND_URL   where images are served from (defaults to http://localhost:3001)
 //
 // Images: any files you drop in public/seed/ are used; otherwise the 9 curated
 // photos in public/lands/ are used. Re-run once — it creates fresh rows each time.
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = (process.env.API_BASE_URL || "https://698zp0x7-3001.uks1.devtunnels.ms").replace(/\/+$/, "");
-const FRONTEND = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+const FRONTEND = (process.env.FRONTEND_URL || "http://localhost:3001").replace(/\/+$/, "");
 const H = { "X-Tunnel-Skip-AntiPhishing-Page": "true", "Content-Type": "application/json" };
 
 /* ------------------------------------------------------------------ images */

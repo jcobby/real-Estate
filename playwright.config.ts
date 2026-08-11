@@ -24,5 +24,8 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120_000,
+        // Force mock mode so the write-flow specs are deterministic and never
+        // touch the real backend (no test users/purchases created live).
+        env: { NEXT_PUBLIC_API_BASE_URL: "" },
       },
 });

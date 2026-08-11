@@ -1,6 +1,7 @@
 import type { AbuseReport, Listing, User } from "@/types";
 import { delay, getDb, mutateDb, uid } from "@/lib/mock/db";
 import { LIVE, http, many, payload } from "./http";
+import { normalizeListing, normalizeUser } from "./normalize";
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -78,13 +79,13 @@ export async function getPlatformStats(): Promise<PlatformStats> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  if (LIVE) return many<User>(await http.get("/v1/admin/users"));
+  if (LIVE) return many<User>(await http.get("/v1/admin/users")).map(normalizeUser);
   await delay();
   return getDb().users;
 }
 
 export async function getModerationListings(): Promise<Listing[]> {
-  if (LIVE) return many<Listing>(await http.get("/v1/admin/listings"));
+  if (LIVE) return many<Listing>(await http.get("/v1/admin/listings")).map(normalizeListing);
   await delay();
   return getDb()
     .listings.filter((l) => l.status !== "removed" && l.status !== "draft")
